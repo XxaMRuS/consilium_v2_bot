@@ -787,8 +787,30 @@ def main() -> None:
     logger.info("🔔 Уведомления о рейтинге: каждый день в 12:00")
     logger.info("📱 Reply-кнопки: 🏠 Меню, ❌ Отмена - активированы")
 
-    # Используем синхронный метод run_polling
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Запуск с поддержкой Python 3.14+
+    import asyncio
+    import sys
+
+    if sys.version_info >= (3, 14):
+        # Для Python 3.14+ создаём event loop вручную
+        logger.info("🔄 Python 3.14+ обнаружен, используем специальный запуск")
+
+        async def run_bot():
+            async with application:
+                await application.initialize()
+                await application.start()
+                await application.updater.start_polling()
+                # Держим бота запущенным
+                stop_event = asyncio.Event()
+                await stop_event.wait()
+
+        try:
+            asyncio.run(run_bot())
+        except KeyboardInterrupt:
+            logger.info("Бот остановлен")
+    else:
+        # Для Python 3.12 и ниже стандартный запуск
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == '__main__':
