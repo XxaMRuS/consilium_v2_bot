@@ -23,8 +23,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 # Бесплатные модели OpenRouter (для fallback)
 FREE_MODELS = [
     "google/gemma-2-9b-it:free",
-    "meta-llama/llama-3-8b-instruct:free",
-    "mistralai/mistral-7b-instruct:free"
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "microsoft/phi-3-medium-128k-instruct:free"
 ]
 
 # Таймауты для API
@@ -42,7 +42,7 @@ class GroqRecommender:
 
     def __init__(self):
         self.api_key = GROQ_API_KEY
-        self.model = "llama3-70b-8192"  # Быстрая модель
+        self.model = "llama-3.3-70b-versatile"  # Актуальная модель
         self.name = "Groq"
 
     async def get_quick_recommendation(self, user_data: dict, current_workout: dict) -> str:

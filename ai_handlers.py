@@ -204,7 +204,7 @@ async def ai_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # Получаем самое большое фото
-        photo = message.photos[-1]
+        photo = message.photo[-1]
         file = await photo.get_file()
 
         # Скачиваем фото
@@ -253,7 +253,7 @@ async def ai_recommend(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Отправляем "генерирую..."
-    await query.chat.send_action("typing")
+    await query.message.chat.send_action("typing")
 
     try:
         # Получаем данные пользователя
@@ -319,7 +319,7 @@ async def ai_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Отправляем "анализирую..."
-    await query.chat.send_action("typing")
+    await query.message.chat.send_action("typing")
 
     try:
         # Получаем данные пользователя
