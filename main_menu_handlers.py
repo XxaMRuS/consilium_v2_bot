@@ -46,6 +46,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             InlineKeyboardButton("🏆 Зал славы", callback_data="hall_of_fame"),
         ],
         [
+            InlineKeyboardButton("🤖 AI Тренер", callback_data="ai_menu"),
             InlineKeyboardButton("👤 Профиль", callback_data="profile"),
         ],
     ]

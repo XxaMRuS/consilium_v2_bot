@@ -70,6 +70,16 @@ from sport_challenge_handlers import (
 from ranking_notifications import init_ranking_notifications_table, update_rankings_and_notify
 from champions_system import calculate_and_notify_champions
 
+# AI-модули
+from ai_handlers import (
+    ai_menu_command,
+    ai_advice_conversation,
+    ai_photo_conversation,
+    ai_recommend,
+    ai_progress,
+    AI_MENU, AI_ADVICE, AI_PHOTO, AI_RECOMMEND, AI_PROGRESS
+)
+
 # Загрузка переменных окружения
 load_dotenv()
 
@@ -279,6 +289,9 @@ async def handle_main_menu(update: Update, context) -> None:
     elif callback_data == OWNER_FF_INFO:
         # Информация о FF
         await owner_ff_info_callback(update, context)
+    elif callback_data == AI_MENU:
+        # AI Тренер
+        await ai_menu_command(update, context)
     elif callback_data == "profile":
         # Профиль (показываем базовую информацию)
         from database_postgres import get_user_mountain_stats, get_user_coin_balance, get_user_scoreboard_total, get_user_pvp_stats
@@ -657,6 +670,12 @@ async def handle_callback_query(update: Update, context) -> None:
         # ==================== ОБЩИЕ CALLBACK ====================
         elif callback_data == "back_to_main":
             await show_main_menu(update, context)
+        elif callback_data == AI_MENU:
+            await ai_menu_command(update, context)
+        elif callback_data == AI_RECOMMEND:
+            await ai_recommend(update, context)
+        elif callback_data == AI_PROGRESS:
+            await ai_progress(update, context)
         else:
             # Неизвестный callback
             logger.warning(f"Неизвестный callback: {callback_data}")
@@ -741,8 +760,12 @@ def main() -> None:
     # Регистрируем ConversationHandler для перевода FF
     application.add_handler(owner_ff_transfer_conversation)
 
+    # Регистрируем AI-обработчики
+    application.add_handler(ai_advice_conversation)
+    application.add_handler(ai_photo_conversation)
+
     # Регистрируем обработчик callback-запросов для главного меню
-    application.add_handler(CallbackQueryHandler(handle_main_menu, pattern=r'^(mountain|sport|pvp|hall_of_fame|profile|admin|owner_menu|owner_stats|owner_balances|owner_champions|owner_champions_history|owner_champions_menu|owner_champions_calculate|owner_champions_confirm|back_to_main)$'))
+    application.add_handler(CallbackQueryHandler(handle_main_menu, pattern=r'^(mountain|sport|pvp|hall_of_fame|profile|admin|owner_menu|owner_stats|owner_balances|owner_champions|owner_champions_history|owner_champions_menu|owner_champions_calculate|owner_champions_confirm|back_to_main|ai_menu)$'))
 
     # Регистрируем обработчики для кнопок Топ Горы Успеха
     application.add_handler(CallbackQueryHandler(mountain_top_callback, pattern=f'^{MOUNTAIN_TOP20_CALLBACK}_'))
