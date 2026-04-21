@@ -74,6 +74,19 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+# Проверка наличия обязательных переменных окружения
+if not BOT_TOKEN:
+    logger.error("❌ BOT_TOKEN не найден в переменных окружения!")
+    logger.error("Установите BOT_TOKEN в настройках Render (Environment Variables)")
+    raise ValueError("BOT_TOKEN is required but not set")
+
+if not DATABASE_URL:
+    logger.error("❌ DATABASE_URL не найден в переменных окружения!")
+    logger.error("Установите DATABASE_URL в настройках Render (Environment Variables)")
+    raise ValueError("DATABASE_URL is required but not set")
+
+logger.info("✅ Переменные окружения загружены успешно")
+
 
 async def show_user_id(update: Update, context) -> None:
     """Показывает пользователю его Telegram ID и информацию"""
