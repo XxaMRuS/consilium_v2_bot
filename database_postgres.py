@@ -23,15 +23,19 @@ EXERCISES_JSON = "exercises.json"
 # Глобальный пул соединений для оптимизации подключений к БД
 _connection_pool = None
 
-def init_connection_pool(minconn=1, maxconn=10):
-    """Инициализирует пул соединений с PostgreSQL."""
+def init_connection_pool(minconn=3, maxconn=20):
+    """
+    Инициализирует пул соединений с PostgreSQL.
+    Увеличены значения для лучшей производительности при нагрузке.
+    """
     global _connection_pool
     try:
         _connection_pool = psycopg2.pool.SimpleConnectionPool(
-            minconn=minconn,
-            maxconn=maxconn,
+            minconn=minconn,  # Увеличено с 1 до 3
+            maxconn=maxconn,  # Увеличено с 10 до 20
             dsn=DB_URL,
-            connect_timeout=10
+            connect_timeout=5,  # Уменьшено с 10 до 5 для быстрого отказа
+            options="-c statement_timeout=30000"  # 30 сек timeout для запросов
         )
         logger.info(f"✅ Connection pool initialized: {minconn}-{maxconn} connections")
         return True
