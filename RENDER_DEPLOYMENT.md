@@ -3,11 +3,44 @@
 ## 📋 Requirements for Render
 
 - PostgreSQL database
-- Python 3.12.0 (ТОЛЬКО эта версия!)
+- Python 3.12 (задаётся через runtime.txt)
 - BOT_TOKEN environment variable
 - DATABASE_URL environment variable
 
-**⚠️ ВАЖНО:** Используйте Python 3.12.0, НЕ используйте Python 3.14+ (есть проблемы с asyncio)
+**⚠️ ВАЖНО:**
+- Версия Python задаётся в файле `runtime.txt` (содержит просто "3.12")
+- НЕ используйте Python 3.14+ (есть проблемы с asyncio)
+- На Render версия Python определяется автоматически из runtime.txt
+
+## 🔧 Python Version на Render
+
+### ⚠️ ВАЖНО: Версия Python задаётся через runtime.txt!
+
+**❌ НЕ работает:**
+- Выбор версии через интерфейс Render (нет такой функции)
+- Переменная окружения PYTHON_VERSION (игнорируется)
+
+**✅ ПРАВИЛЬНЫЙ СПОСОБ:**
+Файл `runtime.txt` в корне проекта должен содержать:
+```
+3.12
+```
+
+**⛔ НЕПРАВИЛЬНЫЕ форматы:**
+- ❌ `python-3.12`
+- ❌ `3.12.0`
+- ❌ `Python 3.12`
+
+**✅ ПРАВИЛЬНЫЙ формат:**
+- ✅ `3.12`
+
+### Как изменить версию Python:
+1. Откройте файл `runtime.txt` в корне проекта
+2. Напишите просто номер версии: `3.12`
+3. Закоммитьте и запушьте в GitHub
+4. Render автоматически пересоберёт проект
+
+---
 
 ## 🔧 Environment Variables (ВАЖНО!)
 
@@ -36,6 +69,11 @@
 - **Key:** `DATABASE_URL`
 - **Value:** `postgresql://consilium_bot_db_user:SABK9whZ2uQUDKtBfTgBZameKa0jzWR9@dpg-d75aj2h5pdvs73ci216g-a.oregon-postgres.render.com/consilium_bot_db`
 - Нажмите **"Save"**
+
+**❌ НЕ добавляйте переменную PYTHON_VERSION!**
+- На Render эта переменная **не работает**
+- Версия Python задаётся через файл `runtime.txt` в корне проекта
+- В файле должно быть просто: `3.12` (не python-3.12, не 3.12.0)
 
 #### 4. Перезапустите сервис:
 - Нажмите **"Manual Deploy"** → **"Clear build cache & deploy"**
