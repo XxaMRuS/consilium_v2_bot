@@ -679,8 +679,13 @@ async def handle_callback_query(update: Update, context) -> None:
 
 def main() -> None:
     """Главная функция для запуска бота"""
-    # Создаём приложение
-    application = Application.builder().token(BOT_TOKEN).build()
+    # Создаём приложение с поддержкой JobQueue
+    try:
+        application = Application.builder().token(BOT_TOKEN).job_queue().build()
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось создать JobQueue: {e}")
+        logger.warning("⚠️ Продолжаем без JobQueue (автоматические задачи не будут работать)")
+        application = Application.builder().token(BOT_TOKEN).build()
 
     # Регистрируем обработчики команд
     application.add_handler(CommandHandler("start", start))
