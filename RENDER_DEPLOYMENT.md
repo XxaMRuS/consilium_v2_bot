@@ -3,9 +3,11 @@
 ## 📋 Requirements for Render
 
 - PostgreSQL database
-- Python 3.12+
+- Python 3.12.0 (ТОЛЬКО эта версия!)
 - BOT_TOKEN environment variable
 - DATABASE_URL environment variable
+
+**⚠️ ВАЖНО:** Используйте Python 3.12.0, НЕ используйте Python 3.14+ (есть проблемы с asyncio)
 
 ## 🔧 Environment Variables (ВАЖНО!)
 

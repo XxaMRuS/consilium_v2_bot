@@ -786,7 +786,19 @@ def main() -> None:
     logger.info("🏠 Готов к работе! Модули: Гора Успеха ✅, PvP ✅, Спорт ✅, Рефералы ✅, Админ ✅")
     logger.info("🔔 Уведомления о рейтинге: каждый день в 12:00")
     logger.info("📱 Reply-кнопки: 🏠 Меню, ❌ Отмена - активированы")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    # Используем run_polling для совместимости с Python 3.12+
+    import asyncio
+    try:
+        # Для Python 3.12+
+        asyncio.run(application.run_polling(allowed_updates=Update.ALL_TYPES))
+    except RuntimeError as e:
+        # Для старых версий Python
+        if "There is no current event loop" in str(e):
+            logger.warning("⚠️ Проблема с event loop, пробуем альтернативный запуск...")
+            application.run_polling(allowed_updates=Update.ALL_TYPES)
+        else:
+            raise
 
 
 if __name__ == '__main__':
