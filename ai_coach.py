@@ -22,7 +22,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # Бесплатные модели OpenRouter (для fallback)
 FREE_MODELS = [
-    "google/gemma-7b-it:free",
+    "google/gemma-2-9b-it:free",
     "meta-llama/llama-3-8b-instruct:free",
     "mistralai/mistral-7b-instruct:free"
 ]
@@ -132,7 +132,10 @@ class GroqRecommender:
         timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(url, headers=headers, json=data) as response:
-                response.raise_for_status()
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Groq API error {response.status}: {error_text}")
+                    raise Exception(f"Groq API error {response.status}: {error_text}")
                 result = await response.json()
 
         if 'choices' in result and len(result['choices']) > 0:
@@ -242,7 +245,10 @@ class OpenRouterCoach:
         timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(url, headers=headers, json=data) as response:
-                response.raise_for_status()
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"OpenRouter {model} error {response.status}: {error_text}")
+                    raise Exception(f"OpenRouter {model} error {response.status}: {error_text}")
                 result = await response.json()
 
         if 'choices' in result and len(result['choices']) > 0:
@@ -311,20 +317,31 @@ class YandexCoach:
         }
 
         data = {
-            "model": self.model,
-            "messages": [{"role": "user", "text": prompt}],
-            "temperature": 0.7,
-            "max_tokens": 500
+            "modelUri": self.model,
+            "completionOptions": {
+                "stream": False,
+                "temperature": 0.7,
+                "maxTokens": 500
+            },
+            "messages": [
+                {
+                    "role": "user",
+                    "text": prompt
+                }
+            ]
         }
 
         timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(url, headers=headers, json=data) as response:
-                response.raise_for_status()
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"YandexGPT error {response.status}: {error_text}")
+                    raise Exception(f"YandexGPT error {response.status}: {error_text}")
                 result = await response.json()
 
-        if 'choices' in result and len(result['choices']) > 0:
-            return result['choices'][0]['message']['text']
+        if 'result' in result and 'alternatives' in result['result'] and len(result['result']['alternatives']) > 0:
+            return result['result']['alternatives'][0]['message']['text']
         else:
             raise Exception("Неверный ответ от API")
 
