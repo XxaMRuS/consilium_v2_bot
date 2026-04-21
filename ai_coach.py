@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-AI-система для фитнес-бота
-Использует YandexGPT, Gemini, Groq, DeepSeek
+AI-система для фитнес-бота с fallback на бесплатные API
+Только бесплатные API с автоматическим переключением
 """
 import os
 import logging
-import requests
+import aiohttp
 import base64
+import asyncio
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
@@ -17,62 +18,84 @@ YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Бесплатные модели OpenRouter (для fallback)
+FREE_MODELS = [
+    "google/gemma-7b-it:free",
+    "meta-llama/llama-3-8b-instruct:free",
+    "mistralai/mistral-7b-instruct:free"
+]
+
+# Таймауты для API
+API_TIMEOUT = 10  # секунд
+API_TIMEOUT_PHOTO = 15  # для фото (дольше)
 
 
-# ==================== YANDEX GPT - УМНЫЙ ТРЕНЕР ====================
+# ==================== GROQ - ОСНОВНОЙ (БЕСПЛАТНЫЙ) ====================
 
-class YandexCoach:
-    """Умный тренер-помощник на YandexGPT"""
+class GroqRecommender:
+    """
+    Groq - основной AI (бесплатный, очень быстрый)
+    Приоритет №1 в системе fallback
+    """
 
     def __init__(self):
-        self.api_key = YANDEX_API_KEY
-        self.folder_id = YANDEX_FOLDER_ID
-        self.model = "gpt://" + self.folder_id + "/yandexgpt/latest"
+        self.api_key = GROQ_API_KEY
+        self.model = "llama3-70b-8192"  # Быстрая модель
+        self.name = "Groq"
 
-    async def get_advice(self, user_data: dict, question: str) -> str:
-        """
-        Даёт персональный совет по тренировке
-
-        Args:
-            user_data: Данные пользователя (имя, уровень, цели)
-            question: Вопрос пользователя
-
-        Returns:
-            str: Ответ от YandexGPT
-        """
+    async def get_quick_recommendation(self, user_data: dict, current_workout: dict) -> str:
+        """Даёт мгновенную рекомендацию"""
         if not self.api_key:
-            return "⚠️ Yandex API не подключён"
+            raise Exception("Groq API не подключён")
 
         try:
-            # Формируем контекст
-            context = self._get_user_context(user_data)
+            prompt = self._create_prompt(user_data, current_workout)
 
-            # Формируем prompt
-            prompt = f"""
-Ты - опытный фитнес-тренер. Пользователь просит совета.
-
-{context}
-
-Вопрос: {question}
-
-Дай краткий, мотивирующий и практичный ответ (2-3 предложения).
-"""
-
-            # Отправляем запрос к YandexGPT
             response = await self._send_request(prompt)
-
+            logger.info(f"✅ {self.name} успешен")
             return response
 
         except Exception as e:
-            logger.error(f"Ошибка YandexGPT: {e}")
-            return "⚠️ Не удалось получить совет от тренера. Попробуйте позже."
+            logger.error(f"❌ {self.name} ошибка: {e}")
+            raise
 
-    def _get_user_context(self, user_data: dict) -> str:
-        """Формирует контекст о пользователе"""
+    async def get_training_advice(self, user_data: dict, question: str) -> str:
+        """Даёт совет по тренировке"""
+        if not self.api_key:
+            raise Exception("Groq API не подключён")
+
+        try:
+            prompt = self._create_advice_prompt(user_data, question)
+            response = await self._send_request(prompt)
+            logger.info(f"✅ {self.name} успешен")
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ {self.name} ошибка: {e}")
+            raise
+
+    def _create_prompt(self, user_data: dict, current_workout: dict) -> str:
+        """Создаёт prompt для быстрой рекомендации"""
         name = user_data.get('first_name', 'Друг')
         level = user_data.get('user_group', 'newbie')
-        score = user_data.get('score', 0)
+        last_workout = current_workout.get('last_exercise', 'Нет тренировок')
+        streak = current_workout.get('streak', 0)
+
+        return f"""Ты - мотивационный фитнес-коуч. Дай БЫСТРУЮ рекомендацию (1 предложение).
+
+Пользователь: {name}
+Уровень: {level}
+Последнее упражнение: {last_workout}
+Серия тренировок: {streak} дней
+
+Дай мотивирующую рекомендацию на сегодня!"""
+
+    def _create_advice_prompt(self, user_data: dict, question: str) -> str:
+        """Создаёт prompt для совета"""
+        name = user_data.get('first_name', 'Друг')
+        level = user_data.get('user_group', 'newbie')
 
         level_names = {
             'newbie': 'новичок',
@@ -81,11 +104,202 @@ class YandexCoach:
             'advanced': 'продвинутый'
         }
 
-        return f"""
+        return f"""Ты - опытный фитнес-тренер. Дай краткий и мотивирующий совет (2-3 предложения).
+
 Пользователь: {name}
 Уровень: {level_names.get(level, 'новичок')}
-Очки: {score}
-"""
+
+Вопрос: {question}
+
+Дай практический ответ!"""
+
+    async def _send_request(self, prompt: str) -> str:
+        """Отправляет запрос к Groq API"""
+        url = "https://api.groq.com/openai/v1/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "messages": [{"role": "user", "content": prompt}],
+            "model": self.model,
+            "temperature": 0.8,
+            "max_tokens": 150
+        }
+
+        timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                response.raise_for_status()
+                result = await response.json()
+
+        if 'choices' in result and len(result['choices']) > 0:
+            return result['choices'][0]['message']['content']
+        else:
+            raise Exception("Неверный ответ от API")
+
+
+# ==================== OPENROUTER - FALLBACK 1 ====================
+
+class OpenRouterCoach:
+    """
+    OpenRouter с бесплатными моделями
+    Fallback при ошибке Groq
+    """
+
+    def __init__(self):
+        self.api_key = OPENROUTER_API_KEY
+        self.models = FREE_MODELS
+        self.name = "OpenRouter"
+
+    async def get_quick_recommendation(self, user_data: dict, current_workout: dict) -> str:
+        """Даёт рекомендацию через бесплатные модели"""
+        if not self.api_key:
+            raise Exception("OpenRouter API не подключён")
+
+        # Пробуем каждую модель по очереди
+        last_error = None
+        for model in self.models:
+            try:
+                prompt = self._create_prompt(user_data, current_workout)
+                response = await self._try_model(model, prompt)
+                logger.info(f"✅ {self.name} ({model}) успешен")
+                return response
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ {self.name} ({model}) не сработал: {e}")
+                continue
+
+        raise Exception(f"Все модели {self.name} недоступны: {last_error}")
+
+    async def get_training_advice(self, user_data: dict, question: str) -> str:
+        """Даёт совет через бесплатные модели"""
+        if not self.api_key:
+            raise Exception("OpenRouter API не подключён")
+
+        last_error = None
+        for model in self.models:
+            try:
+                prompt = self._create_advice_prompt(user_data, question)
+                response = await self._try_model(model, prompt)
+                logger.info(f"✅ {self.name} ({model}) успешен")
+                return response
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ {self.name} ({model}) не сработал: {e}")
+                continue
+
+        raise Exception(f"Все модели {self.name} недоступны: {last_error}")
+
+    def _create_prompt(self, user_data: dict, current_workout: dict) -> str:
+        """Создаёт prompt"""
+        name = user_data.get('first_name', 'Друг')
+        last_workout = current_workout.get('last_exercise', 'Нет тренировок')
+        streak = current_workout.get('streak', 0)
+
+        return f"""Ты - фитнес-коуч. Дай краткую рекомендацию (1 предложение).
+
+Пользователь: {name}
+Последнее упражнение: {last_workout}
+Серия: {streak} дней
+
+Мотивируй!"""
+
+    def _create_advice_prompt(self, user_data: dict, question: str) -> str:
+        """Создаёт prompt для совета"""
+        name = user_data.get('first_name', 'Друг')
+
+        return f"""Ты - фитнес-тренер. Дай краткий совет (2-3 предложения).
+
+Пользователь: {name}
+
+Вопрос: {question}
+
+Дай практический ответ!"""
+
+    async def _try_model(self, model: str, prompt: str) -> str:
+        """Пробует конкретную модель"""
+        url = "https://openrouter.ai/api/v1/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:8000",
+            "X-Title": "Fitness Bot"
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "max_tokens": 150
+        }
+
+        timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                response.raise_for_status()
+                result = await response.json()
+
+        if 'choices' in result and len(result['choices']) > 0:
+            return result['choices'][0]['message']['content']
+        else:
+            raise Exception("Неверный ответ от API")
+
+
+# ==================== YANDEXGPT - FALLBACK 2 ====================
+
+class YandexCoach:
+    """
+    YandexGPT - fallback при ошибках OpenRouter
+    Бесплатный лимит (Алиса)
+    """
+
+    def __init__(self):
+        self.api_key = YANDEX_API_KEY
+        self.folder_id = YANDEX_FOLDER_ID
+        self.model = f"gpt://{self.folder_id}/yandexgpt/latest"
+        self.name = "YandexGPT"
+
+    async def get_training_advice(self, user_data: dict, question: str) -> str:
+        """Даёт совет через YandexGPT"""
+        if not self.api_key:
+            raise Exception("Yandex API не подключён")
+
+        try:
+            prompt = self._create_advice_prompt(user_data, question)
+            response = await self._send_request(prompt)
+            logger.info(f"✅ {self.name} успешен")
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ {self.name} ошибка: {e}")
+            raise
+
+    def _create_advice_prompt(self, user_data: dict, question: str) -> str:
+        """Создаёт prompt"""
+        name = user_data.get('first_name', 'Друг')
+        level = user_data.get('user_group', 'newbie')
+
+        level_names = {
+            'newbie': 'новичок',
+            'beginner': 'начинающий',
+            'intermediate': 'средний уровень',
+            'advanced': 'продвинутый'
+        }
+
+        return f"""Ты - фитнес-тренер. Дай краткий совет (2-3 предложения).
+
+Пользователь: {name}
+Уровень: {level_names.get(level, 'новичок')}
+
+Вопрос: {question}
+
+Дай практический ответ!"""
 
     async def _send_request(self, prompt: str) -> str:
         """Отправляет запрос к YandexGPT API"""
@@ -98,57 +312,55 @@ class YandexCoach:
 
         data = {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "text": prompt
-                }
-            ],
+            "messages": [{"role": "user", "text": prompt}],
             "temperature": 0.7,
             "max_tokens": 500
         }
 
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
+        timeout = aiohttp.ClientTimeout(total=API_TIMEOUT)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                response.raise_for_status()
+                result = await response.json()
 
-        result = response.json()
-
-        # Извлекаем ответ
         if 'choices' in result and len(result['choices']) > 0:
             return result['choices'][0]['message']['text']
         else:
-            return "Не удалось получить ответ"
+            raise Exception("Неверный ответ от API")
 
 
 # ==================== GEMINI - АНАЛИЗ ФОТО ====================
 
 class GeminiPhotoAnalyzer:
-    """Анализ фото тренировок с Gemini"""
+    """
+    Gemini - анализ фото тренировок
+    Fallback для анализа изображений
+    """
 
     def __init__(self):
         self.api_key = GEMINI_API_KEY
+        self.name = "Gemini"
 
     async def analyze_photo(self, photo_data: bytes, exercise_name: str) -> str:
-        """
-        Анализирует фото с тренировкой
-
-        Args:
-            photo_data: Данные фото (bytes)
-            exercise_name: Название упражнения
-
-        Returns:
-            str: Анализ техники
-        """
+        """Анализирует фото с тренировкой"""
         if not self.api_key:
-            return "⚠️ Gemini API не подключён"
+            raise Exception("Gemini API не подключён")
 
         try:
-            # Конвертируем фото в base64
             base64_image = base64.b64encode(photo_data).decode('utf-8')
+            prompt = self._create_photo_prompt(exercise_name)
 
-            # Формируем prompt
-            prompt = f"""
-Проанализируй технику выполнения упражнения: "{exercise_name}"
+            response = await self._send_request(base64_image, prompt)
+            logger.info(f"✅ {self.name} успешен")
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ {self.name} ошибка: {e}")
+            raise
+
+    def _create_photo_prompt(self, exercise_name: str) -> str:
+        """Создаёт prompt для анализа фото"""
+        return f"""Проанализируй технику выполнения упражнения: "{exercise_name}"
 
 Дай краткий анализ:
 1. Правильность позиции (✅ хорошо / ❌ исправить)
@@ -161,30 +373,17 @@ class GeminiPhotoAnalyzer:
 ⭐ Оценка: [число]/10
 """
 
-            # Отправляем запрос к Gemini
-            response = await self._send_request(base64_image, prompt)
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Ошибка Gemini: {e}")
-            return "⚠️ Не удалось проанализировать фото. Попробуйте позже."
-
     async def _send_request(self, base64_image: str, prompt: str) -> str:
         """Отправляет запрос к Gemini API"""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={self.api_key}"
 
-        headers = {
-            "Content-Type": "application/json"
-        }
+        headers = {"Content-Type": "application/json"}
 
         data = {
             "contents": [
                 {
                     "parts": [
-                        {
-                            "text": prompt
-                        },
+                        {"text": prompt},
                         {
                             "inline_data": {
                                 "mime_type": "image/jpeg",
@@ -200,138 +399,115 @@ class GeminiPhotoAnalyzer:
             }
         }
 
-        response = requests.post(url, headers=headers, json=data, timeout=15)
-        response.raise_for_status()
+        timeout = aiohttp.ClientTimeout(total=API_TIMEOUT_PHOTO)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                response.raise_for_status()
+                result = await response.json()
 
-        result = response.json()
-
-        # Извлекаем ответ
         if 'candidates' in result and len(result['candidates']) > 0:
             return result['candidates'][0]['content']['parts'][0]['text']
         else:
-            return "Не удалось получить анализ"
+            raise Exception("Неверный ответ от API")
 
 
-# ==================== GROQ - МГНОВЕННЫЕ РЕКОМЕНДАЦИИ ====================
+# ==================== СИСТЕМА FALLBACK ====================
 
-class GroqRecommender:
-    """Мгновенные рекомендации на Groq"""
+class AICoachSystem:
+    """
+    Общая система AI-тренера с автоматическим fallback
+    Только бесплатные API!
+    """
 
     def __init__(self):
-        self.api_key = GROQ_API_KEY
-        self.model = "llama3-70b-8192"  # Быстрая модель
+        self.groq = GroqRecommender()
+        self.openrouter = OpenRouterCoach()
+        self.yandex = YandexCoach()
+        self.gemini = GeminiPhotoAnalyzer()
 
     async def get_quick_recommendation(self, user_data: dict, current_workout: dict) -> str:
         """
-        Даёт мгновенную рекомендацию
+        Быстрая рекомендация с fallback
 
-        Args:
-            user_data: Данные пользователя
-            current_workout: Текущая тренировка
-
-        Returns:
-            str: Рекомендация
+        Приоритет:
+        1. Groq (самый быстрый)
+        2. OpenRouter (бесплатные модели)
+        3. YandexGPT (резерв)
         """
-        if not self.api_key:
-            return "⚠️ Groq API не подключён"
-
+        # Пробуем Groq
         try:
-            # Формируем prompt
-            prompt = self._create_recommendation_prompt(user_data, current_workout)
-
-            # Отправляем запрос
-            response = await self._send_request(prompt)
-
-            return response
-
+            return await self.groq.get_quick_recommendation(user_data, current_workout)
         except Exception as e:
-            logger.error(f"Ошибка Groq: {e}")
-            return "⚠️ Не удалось получить рекомендацию"
+            logger.warning(f"⚠️ Groq не сработал: {e}, пробуем OpenRouter...")
 
-    def _create_recommendation_prompt(self, user_data: dict, current_workout: dict) -> str:
-        """Создаёт prompt для рекомендации"""
-        name = user_data.get('first_name', 'Друг')
-        level = user_data.get('user_group', 'newbie')
-        last_workout = current_workout.get('last_exercise', 'Нет данных')
-        streak = current_workout.get('streak', 0)
-
-        return f"""
-Ты - мотивационный фитнес-коуч. Дай БЫСТРУЮ рекомендацию (1 предложение).
-
-Пользователь: {name}
-Уровень: {level}
-Последнее упражнение: {last_workout}
-Серия тренировок: {streak} дней
-
-Дай мотивирующую рекомендацию на сегодня!
-"""
-
-    async def _send_request(self, prompt: str) -> str:
-        """Отправляет запрос к Groq API"""
-        url = "https://api.groq.com/openai/v1/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "model": self.model,
-            "temperature": 0.8,
-            "max_tokens": 100
-        }
-
-        response = requests.post(url, headers=headers, json=data, timeout=5)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if 'choices' in result and len(result['choices']) > 0:
-            return result['choices'][0]['message']['content']
-        else:
-            return "Продолжай в том же духе!"
-
-
-# ==================== DEEPSEEK - АНАЛИЗ ПРОГРЕССА ====================
-
-class DeepSeekAnalyzer:
-    """Анализ прогресса с DeepSeek"""
-
-    def __init__(self):
-        self.api_key = DEEPSEEK_API_KEY
-
-    async def analyze_progress(self, user_data: dict, workout_history: list) -> str:
-        """
-        Анализирует прогресс пользователя
-
-        Args:
-            user_data: Данные пользователя
-            workout_history: История тренировок
-
-        Returns:
-            str: Анализ прогресса
-        """
-        if not self.api_key:
-            return "⚠️ DeepSeek API не подключён"
-
+        # Пробуем OpenRouter
         try:
-            # Формируем prompt
+            return await self.openrouter.get_quick_recommendation(user_data, current_workout)
+        except Exception as e:
+            logger.warning(f"⚠️ OpenRouter не сработал: {e}, пробуем Yandex...")
+
+        # Пробуем Yandex
+        try:
+            return await self.yandex.get_training_advice(user_data, "Дай быструю мотивацию на сегодня")
+        except Exception as e:
+            logger.error(f"❌ Все AI недоступны: {e}")
+            return "⚠️ Все AI-сервисы暂时 недоступны. Попробуйте позже!"
+
+    async def get_training_advice(self, user_data: dict, question: str) -> str:
+        """
+        Совет по тренировке с fallback
+
+        Приоритет:
+        1. Groq (быстрый и качественный)
+        2. OpenRouter (бесплатные модели)
+        3. YandexGPT (резерв)
+        """
+        # Пробуем Groq
+        try:
+            return await self.groq.get_training_advice(user_data, question)
+        except Exception as e:
+            logger.warning(f"⚠️ Groq не сработал: {e}, пробуем OpenRouter...")
+
+        # Пробуем OpenRouter
+        try:
+            return await self.openrouter.get_training_advice(user_data, question)
+        except Exception as e:
+            logger.warning(f"⚠️ OpenRouter не сработал: {e}, пробуем Yandex...")
+
+        # Пробуем Yandex
+        try:
+            return await self.yandex.get_training_advice(user_data, question)
+        except Exception as e:
+            logger.error(f"❌ Все AI недоступны: {e}")
+            return "⚠️ Все AI-сервисы暂时 недоступны. Попробуйте позже!"
+
+    async def analyze_workout_photo(self, photo_data: bytes, exercise_name: str) -> str:
+        """
+        Анализ фото с fallback
+
+        Приоритет:
+        1. Gemini (основной для фото)
+        """
+        try:
+            return await self.gemini.analyze_photo(photo_data, exercise_name)
+        except Exception as e:
+            logger.error(f"❌ Gemini не сработал: {e}")
+            return "⚠️ Не удалось проанализировать фото. Попробуйте позже."
+
+    async def analyze_user_progress(self, user_data: dict, workout_history: list) -> str:
+        """
+        Анализ прогресса через Groq (самый быстрый)
+
+        Использует Groq как основной API
+        """
+        try:
+            # Формируем prompt для анализа прогресса
             prompt = self._create_progress_prompt(user_data, workout_history)
-
-            # Отправляем запрос
-            response = await self._send_request(prompt)
-
-            return response
+            return await self.groq._send_request(prompt)
 
         except Exception as e:
-            logger.error(f"Ошибка DeepSeek: {e}")
-            return "⚠️ Не удалось проанализировать прогресс"
+            logger.error(f"❌ Не удалось проанализировать прогресс: {e}")
+            return "⚠️ Не удалось проанализировать прогресс. Попробуйте позже."
 
     def _create_progress_prompt(self, user_data: dict, workout_history: list) -> str:
         """Создаёт prompt для анализа прогресса"""
@@ -341,14 +517,13 @@ class DeepSeekAnalyzer:
 
         # Формируем статистику
         if workout_history:
-            last_7_days = sum(1 for w in workout_history if self._is_last_days(w['date'], 7))
-            last_30_days = sum(1 for w in workout_history if self._is_last_days(w['date'], 30))
+            last_7_days = sum(1 for w in workout_history if self._is_last_days(w.get('date', ''), 7))
+            last_30_days = sum(1 for w in workout_history if self._is_last_days(w.get('date', ''), 30))
         else:
             last_7_days = 0
             last_30_days = 0
 
-        return f"""
-Ты - аналитик фитнес-прогресса. Проанализируй прогресс пользователя.
+        return f"""Ты - аналитик фитнес-прогресса. Проанализируй прогресс.
 
 Имя: {name}
 Очки: {score}
@@ -357,15 +532,13 @@ class DeepSeekAnalyzer:
 За последние 30 дней: {last_30_days} тренировок
 
 Дай анализ:
-1. Текущий прогресс (улучшение/стагнация)
+1. Текущий прогресс
 2. Сильные стороны
 3. Что улучшить
-4. Мотивационное сообщение
 
-Ответ краткий, 3-4 предложения.
-"""
+Ответ краткий, 3-4 предложения."""
 
-    def _is_last_days(self, date_str, days):
+    def _is_last_days(self, date_str: str, days: int) -> bool:
         """Проверяет, была ли тренировка в последние N дней"""
         try:
             workout_date = datetime.strptime(date_str, '%Y-%m-%d')
@@ -374,72 +547,13 @@ class DeepSeekAnalyzer:
         except:
             return False
 
-    async def _send_request(self, prompt: str) -> str:
-        """Отправляет запрос к DeepSeek API"""
-        url = "https://api.deepseek.com/v1/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "model": "deepseek-chat",
-            "temperature": 0.7,
-            "max_tokens": 500
-        }
-
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if 'choices' in result and len(result['choices']) > 0:
-            return result['choices'][0]['message']['content']
-        else:
-            return "Продолжай тренироваться регулярно!"
-
-
-# ==================== ОБЩИЙ ИНТЕРФЕЙС ====================
-
-class AICoachSystem:
-    """Общая система AI-тренера"""
-
-    def __init__(self):
-        self.yandex = YandexCoach()
-        self.gemini = GeminiPhotoAnalyzer()
-        self.groq = GroqRecommender()
-        self.deepseek = DeepSeekAnalyzer()
-
-    async def get_training_advice(self, user_data: dict, question: str) -> str:
-        """Получает совет от YandexGPT"""
-        return await self.yandex.get_advice(user_data, question)
-
-    async def analyze_workout_photo(self, photo_data: bytes, exercise_name: str) -> str:
-        """Анализирует фото с Gemini"""
-        return await self.gemini.analyze_photo(photo_data, exercise_name)
-
-    async def get_quick_recommendation(self, user_data: dict, current_workout: dict) -> str:
-        """Получает быструю рекомендацию от Groq"""
-        return await self.groq.get_quick_recommendation(user_data, current_workout)
-
-    async def analyze_user_progress(self, user_data: dict, workout_history: list) -> str:
-        """Анализирует прогресс с DeepSeek"""
-        return await self.deepseek.analyze_progress(user_data, workout_history)
-
     def is_available(self) -> dict:
         """Проверяет доступность AI-систем"""
         return {
-            "yandex": bool(self.yandex.api_key),
-            "gemini": bool(self.gemini.api_key),
             "groq": bool(self.groq.api_key),
-            "deepseek": bool(self.deepseek.api_key)
+            "openrouter": bool(self.openrouter.api_key),
+            "yandex": bool(self.yandex.api_key),
+            "gemini": bool(self.gemini.api_key)
         }
 
 

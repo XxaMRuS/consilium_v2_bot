@@ -79,6 +79,12 @@ from ai_handlers import (
     ai_progress,
     AI_MENU, AI_ADVICE, AI_PHOTO, AI_RECOMMEND, AI_PROGRESS
 )
+# Календарь тренировок
+from calendar_handlers import (
+    calendar_menu,
+    calendar_navigation,
+    CALENDAR, CALENDAR_PREV, CALENDAR_NEXT, CALENDAR_BACK
+)
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -292,6 +298,9 @@ async def handle_main_menu(update: Update, context) -> None:
     elif callback_data == AI_MENU:
         # AI Тренер
         await ai_menu_command(update, context)
+    elif callback_data == CALENDAR:
+        # Календарь тренировок
+        await calendar_menu(update, context)
     elif callback_data == "profile":
         # Профиль (показываем базовую информацию)
         from database_postgres import get_user_mountain_stats, get_user_coin_balance, get_user_scoreboard_total, get_user_pvp_stats
@@ -765,13 +774,18 @@ def main() -> None:
     application.add_handler(ai_photo_conversation)
 
     # Регистрируем обработчик callback-запросов для главного меню
-    application.add_handler(CallbackQueryHandler(handle_main_menu, pattern=r'^(mountain|sport|pvp|hall_of_fame|profile|admin|owner_menu|owner_stats|owner_balances|owner_champions|owner_champions_history|owner_champions_menu|owner_champions_calculate|owner_champions_confirm|back_to_main|ai_menu)$'))
+    application.add_handler(CallbackQueryHandler(handle_main_menu, pattern=r'^(mountain|sport|pvp|hall_of_fame|profile|admin|owner_menu|owner_stats|owner_balances|owner_champions|owner_champions_history|owner_champions_menu|owner_champions_calculate|owner_champions_confirm|back_to_main|ai_menu|calendar)$'))
 
     # Регистрируем обработчики для кнопок Топ Горы Успеха
     application.add_handler(CallbackQueryHandler(mountain_top_callback, pattern=f'^{MOUNTAIN_TOP20_CALLBACK}_'))
     application.add_handler(CallbackQueryHandler(mountain_top_callback, pattern=f'^{MOUNTAIN_TOP50_CALLBACK}_'))
     application.add_handler(CallbackQueryHandler(mountain_top_callback, pattern=f'^{MOUNTAIN_TOP100_CALLBACK}_'))
     application.add_handler(CallbackQueryHandler(mountain_top_callback, pattern=f'^{MOUNTAIN_TOP200_CALLBACK}_'))
+
+    # Регистрируем обработчики календаря тренировок
+    application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_PREV}$'))
+    application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_NEXT}$'))
+    application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_BACK}$'))
 
     # Регистрируем обработчик для поискового ввода (должен быть последним)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_input_if_waiting))

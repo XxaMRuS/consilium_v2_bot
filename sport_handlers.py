@@ -32,6 +32,7 @@ SPORT_BACK_TO_MAIN = "sport_back_to_main"
 SPORT_WORKOUT_START = "sport_workout_start"
 SPORT_CHALLENGE_JOIN = "sport_challenge_join"
 SPORT_COMPLEX_START = "sport_complex_start"
+CALENDAR = "calendar"
 
 REPS = 1
 TIME = 2
@@ -69,6 +70,7 @@ async def sport_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📦 Комплексы", callback_data=SPORT_COMPLEXES)],
         [InlineKeyboardButton("📊 Рейтинги", callback_data=SPORT_RATINGS)],
         [InlineKeyboardButton("📈 Моя статистика", callback_data=SPORT_MY_STATS)],
+        [InlineKeyboardButton("📅 Календарь", callback_data=CALENDAR)],
         [InlineKeyboardButton("◀️ В главное меню", callback_data=SPORT_BACK_TO_MAIN)]
     ]
 

@@ -49,8 +49,8 @@ async def ai_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text += "❌ Мгновенные советы (не доступен)\n"
 
-    if available['deepseek']:
-        text += "✅ Анализ прогресса (DeepSeek)\n"
+    if available['groq']:
+        text += "✅ Анализ прогресса (Groq)\n"
     else:
         text += "❌ Анализ прогресса (не доступен)\n"
 
@@ -310,12 +310,12 @@ async def ai_recommend(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==================== АНАЛИЗ ПРОГРЕССА (DEEPSEEK) ====================
 
 async def ai_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Анализирует прогресс пользователя"""
+    """Анализирует прогресс пользователя через Groq"""
     query = update.callback_query
     await query.answer()
 
-    if not ai_coach.is_available()['deepseek']:
-        await query.edit_message_text("❌ DeepSeek не подключён. Добавьте DEEPSEEK_API_KEY.")
+    if not ai_coach.is_available()['groq']:
+        await query.edit_message_text("❌ Groq не подключён. Добавьте GROQ_API_KEY.")
         return
 
     # Отправляем "анализирую..."

@@ -3,5 +3,6 @@ python-telegram-bot==20.0
 psycopg2-binary
 python-dotenv
 requests
+aiohttp==3.9.1
 pillow
 Flask==3.0.0
