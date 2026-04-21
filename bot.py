@@ -4,6 +4,15 @@ from datetime import datetime
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
+
+# Импортируем веб-сервер для Render health check
+try:
+    from web_server import start_web_server
+    WEB_SERVER_AVAILABLE = True
+except ImportError:
+    WEB_SERVER_AVAILABLE = False
+    logging.warning("⚠️ Веб-сервер не доступен")
+
 from main_menu_handlers import show_main_menu
 from hall_of_fame_handlers import hall_of_fame_callback, HALL_OF_FAME_MENU
 from owner_handlers import (
@@ -780,6 +789,14 @@ def main() -> None:
         logger.info("✅ Ежемесячный расчёт чемпионов запланирован на 1-е число в 00:01")
     else:
         logger.warning("⚠️ JobQueue не доступен, автоматические задачи не будут выполняться")
+
+    # Запускаем веб-сервер для Render health check
+    if WEB_SERVER_AVAILABLE:
+        try:
+            start_web_server()
+            logger.info("✅ Веб-сервер для health check запущен")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось запустить веб-сервер: {e}")
 
     # Запускаем бота
     logger.info("Бот запущен...")
