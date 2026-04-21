@@ -132,8 +132,13 @@ Check Render logs for:
 
 2. **Bot doesn't respond**: Check BOT_TOKEN is correct
 3. **Database errors**: Verify DATABASE_URL format
-4. **JobQueue not working**: Check if worker is enabled
-5. **Memory issues**: May need to upgrade Render plan
+4. **JobQueue not working**:
+   - ✅ APScheduler установлен (в requirements.txt)
+   - ✅ Проверьте логи на наличие "JobQueue доступен"
+5. **No open ports detected**:
+   - ✅ Веб-сервер запущен автоматически (web_server.py)
+   - ✅ Health check доступен на порту 10000
+6. **Memory issues**: May need to upgrade Render plan
 
 ## 📊 Scheduled Tasks
 
