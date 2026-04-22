@@ -463,7 +463,7 @@ def init_db():
             user_level VARCHAR(20) NOT NULL,
             is_best BOOLEAN DEFAULT FALSE,
             comment TEXT,
-            performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(telegram_id),
             FOREIGN KEY(exercise_id) REFERENCES exercises(id),
             FOREIGN KEY(complex_id) REFERENCES complexes(id)
@@ -548,6 +548,30 @@ def init_db():
         )
     """)
     logger.info("Таблица 'pvp_history' создана.")
+
+    # Таблица для настроек конвертации PvP очков
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pvp_settings (
+            key VARCHAR(50) PRIMARY KEY,
+            percent INTEGER DEFAULT 0 CHECK (percent >= 0 AND percent <= 100)
+        )
+    """)
+
+    # Устанавливаем значения по умолчанию если их нет
+    default_pvp_settings = [
+        ('exercise_pvp_percent', 7),
+        ('complex_pvp_percent', 15),
+        ('challenge_pvp_percent', 20)
+    ]
+
+    for key, value in default_pvp_settings:
+        cur.execute("""
+            INSERT INTO pvp_settings (key, percent)
+            VALUES (%s, %s)
+            ON CONFLICT (key) DO NOTHING
+        """, (key, value))
+
+    logger.info("Таблица 'pvp_settings' создана с настройками по умолчанию")
 
     conn.commit()
     conn.close()
@@ -1066,7 +1090,7 @@ def get_user_workouts(user_id, limit=20):
             COALESCE(e.name, c.name) as name,
             w.result_value,
             w.video_link,
-            w.performed_at,
+            w.date,
             w.is_best,
             CASE WHEN w.exercise_id IS NOT NULL THEN 'упражнение' ELSE 'комплекс' END as type,
             w.comment
@@ -1074,7 +1098,7 @@ def get_user_workouts(user_id, limit=20):
         LEFT JOIN exercises e ON w.exercise_id = e.id
         LEFT JOIN complexes c ON w.complex_id = c.id
         WHERE w.user_id = %s
-        ORDER BY w.performed_at DESC
+        ORDER BY w.date DESC
         LIMIT %s
     """, (user_id, limit))
     rows = cur.fetchall()
@@ -1098,13 +1122,13 @@ def get_user_stats(user_id, period=None, level=None):
         params.append(level)
     if period:
         if period == 'day':
-            query += " AND DATE(w.performed_at) = CURRENT_DATE"
+            query += " AND DATE(w.date) = CURRENT_DATE"
         elif period == 'week':
-            query += " AND EXTRACT(WEEK FROM w.performed_at) = EXTRACT(WEEK FROM CURRENT_TIMESTAMP) AND EXTRACT(YEAR FROM w.performed_at) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
+            query += " AND EXTRACT(WEEK FROM w.date) = EXTRACT(WEEK FROM CURRENT_TIMESTAMP) AND EXTRACT(YEAR FROM w.date) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
         elif period == 'month':
-            query += " AND EXTRACT(MONTH FROM w.performed_at) = EXTRACT(MONTH FROM CURRENT_TIMESTAMP) AND EXTRACT(YEAR FROM w.performed_at) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
+            query += " AND EXTRACT(MONTH FROM w.date) = EXTRACT(MONTH FROM CURRENT_TIMESTAMP) AND EXTRACT(YEAR FROM w.date) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
         elif period == 'year':
-            query += " AND EXTRACT(YEAR FROM w.performed_at) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
+            query += " AND EXTRACT(YEAR FROM w.date) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
     cur.execute(query, params)
     result = cur.fetchone()
     conn.close()
@@ -2178,15 +2202,15 @@ def get_user_activity_calendar(user_id, year, month):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
-            DATE(performed_at) as day,
+            DATE(date) as day,
             COUNT(*) as workout_count,
             0 as record_count,
             SUM(CAST(result_value AS NUMERIC)) as total_volume
         FROM workouts
         WHERE user_id = %s
-          AND EXTRACT(YEAR FROM performed_at) = %s
-          AND EXTRACT(MONTH FROM performed_at) = %s
-        GROUP BY DATE(performed_at)
+          AND EXTRACT(YEAR FROM date) = %s
+          AND EXTRACT(MONTH FROM date) = %s
+        GROUP BY DATE(date)
     """, (user_id, year, month))
     rows = cursor.fetchall()
     conn.close()
@@ -2251,7 +2275,7 @@ def _get_user_workout_score_period(cur, user_id, start_time, end_time):
         SELECT COALESCE(SUM(e.points), 0)
         FROM workouts w
         JOIN exercises e ON w.exercise_id = e.id
-        WHERE w.user_id = %s AND w.performed_at >= %s AND w.performed_at <= %s
+        WHERE w.user_id = %s AND w.date >= %s AND w.date <= %s
     """, (user_id, start_time, end_time))
     return cur.fetchone()[0]
 
@@ -2820,7 +2844,7 @@ def recalculate_rankings(period_days=7):
             query = """
                 SELECT user_id, MAX(CAST(result_value AS INTEGER)) as best
                 FROM workouts
-                WHERE exercise_id = %s AND performed_at >= %s
+                WHERE exercise_id = %s AND date >= %s
                 GROUP BY user_id
                 ORDER BY best DESC
             """
@@ -2828,7 +2852,7 @@ def recalculate_rankings(period_days=7):
             query = """
                 SELECT user_id, MIN(result_value) as best
                 FROM workouts
-                WHERE exercise_id = %s AND performed_at >= %s
+                WHERE exercise_id = %s AND date >= %s
                 GROUP BY user_id
                 ORDER BY best ASC
             """
@@ -2861,7 +2885,7 @@ def recalculate_rankings(period_days=7):
                         SELECT user_id, SUM(CAST(result_value AS INTEGER)) as best
                         FROM workouts
                         WHERE complex_id = %s
-                          AND performed_at >= %s
+                          AND date >= %s
                         GROUP BY user_id
                         ORDER BY best DESC
                         """
@@ -2870,7 +2894,7 @@ def recalculate_rankings(period_days=7):
                         SELECT user_id, SUM(result_value) as best
                         FROM workouts
                         WHERE complex_id = %s
-                          AND performed_at >= %s
+                          AND date >= %s
                         GROUP BY user_id
                         ORDER BY best ASC
                         """
@@ -3791,8 +3815,32 @@ def init_wheel_tables():
             """)
             logger.info("Созданы дефолтные настройки колеса фортуны")
 
+        # Таблица для настроек конвертации PvP очков
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pvp_settings (
+                key VARCHAR(50) PRIMARY KEY,
+                percent INTEGER DEFAULT 0 CHECK (percent >= 0 AND percent <= 100)
+            )
+        """)
+
+        # Устанавливаем значения по умолчанию если их нет
+        default_pvp_settings = [
+            ('exercise_pvp_percent', 7),
+            ('complex_pvp_percent', 15),
+            ('challenge_pvp_percent', 20)
+        ]
+
+        for key, value in default_pvp_settings:
+            cur.execute("""
+                INSERT INTO pvp_settings (key, percent)
+                VALUES (%s, %s)
+                ON CONFLICT (key) DO NOTHING
+            """, (key, value))
+
+        logger.info("Таблица 'pvp_settings' создана с настройками по умолчанию")
+
         conn.commit()
-        logger.info("Таблицы колеса фортуны инициализированы")
+        logger.info("Таблицы колеса фортуны и PvP настроек инициализированы")
         return True
 
     except Exception as e:
@@ -4117,12 +4165,12 @@ def get_user_workout_today(user_id, exercise_id=None):
             cur.execute("""
                 SELECT id FROM workouts
                 WHERE user_id = %s AND exercise_id = %s
-                AND DATE(performed_at) = %s
+                AND DATE(date) = %s
             """, (user_id, exercise_id, today))
         else:
             cur.execute("""
                 SELECT id FROM workouts
-                WHERE user_id = %s AND DATE(performed_at) = %s
+                WHERE user_id = %s AND DATE(date) = %s
             """, (user_id, today))
 
         result = cur.fetchone()
@@ -4421,3 +4469,189 @@ def reserve_fun_fuel(user_id, amount):
 def refund_fun_fuel(user_id, amount, reason="Возврат ставки"):
     """Возвращает FruN Fuel пользователю."""
     return add_fun_fuel(user_id, amount, f"Возврат: {reason}")
+
+def get_complex_records(complex_id, user_level='beginner', limit=3):
+    """
+    Получает топ-3 рекорда для комплекса с фильтрацией по уровню
+    Возвращает список dict: display_name, result, video
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Получаем упражнения комплекса
+        cur.execute("""
+            SELECT exercise_id FROM complex_exercises
+            WHERE complex_id = %s ORDER BY order_index
+        """, (complex_id,))
+        exercise_ids = [row[0] for row in cur.fetchall()]
+
+        if not exercise_ids:
+            return []
+
+        # Находим пользователей, которые выполнили все упражнения комплекса
+        placeholders = ','.join(['%s'] * len(exercise_ids))
+
+        # Сначала находим пользователей, которые выполнили весь комплекс
+        user_count_query = f"""
+            SELECT w.user_id, COUNT(DISTINCT w.exercise_id) as exercise_count
+            FROM workouts w
+            WHERE w.exercise_id IN ({placeholders})
+              AND w.user_level = %s
+              AND w.video_link IS NOT NULL
+              AND w.video_link != ''
+            GROUP BY w.user_id
+            HAVING COUNT(DISTINCT w.exercise_id) = %s
+        """
+
+        params = exercise_ids + [user_level, len(exercise_ids)]
+        cur.execute(user_count_query, params)
+        user_ids = [row[0] for row in cur.fetchall()]
+
+        if not user_ids:
+            return []
+
+        # Получаем результаты для этих пользователей
+        user_placeholders = ','.join(['%s'] * len(user_ids))
+        exercise_placeholders = ','.join(['%s'] * len(exercise_ids))
+
+        records_query = f"""
+            SELECT
+                u.username,
+                u.first_name,
+                w.result_value,
+                w.video_link,
+                w.exercise_id
+            FROM workouts w
+            JOIN users u ON w.user_id = u.telegram_id
+            WHERE w.user_id IN ({user_placeholders})
+              AND w.exercise_id IN ({exercise_placeholders})
+              AND w.video_link IS NOT NULL
+              AND w.video_link != ''
+            ORDER BY CAST(w.result_value AS NUMERIC) DESC
+            LIMIT %s
+        """
+
+        params = user_ids + exercise_ids + [limit * 3]
+        cur.execute(records_query, params)
+
+        # Группируем по пользователям и суммируем результаты
+        user_results = {}
+        for row in cur.fetchall():
+            username, first_name, result_value, video_link, exercise_id = row
+            display_name = f"@{username}" if username else first_name or "Пользователь"
+
+            if display_name not in user_results:
+                user_results[display_name] = {
+                    'total_result': 0,
+                    'video': video_link if video_link and not video_link.startswith(('photo_', 'video_')) else None,
+                    'count': 0
+                }
+
+            try:
+                user_results[display_name]['total_result'] += float(result_value)
+                user_results[display_name]['count'] += 1
+            except:
+                pass
+
+        # Сортируем по суммарному результату
+        sorted_results = sorted(
+            user_results.items(),
+            key=lambda x: x[1]['total_result'],
+            reverse=True
+        )[:limit]
+
+        # Формируем результат
+        records = []
+        for display_name, data in sorted_results:
+            # Форматируем результат
+            total_result = data['total_result']
+            if total_result >= 1000:
+                minutes = int(total_result // 60)
+                seconds = int(total_result % 60)
+                formatted_result = f"{minutes}:{seconds:02d}"
+            else:
+                formatted_result = str(int(total_result))
+
+            records.append({
+                'display_name': display_name,
+                'result': formatted_result,
+                'video': data['video']
+            })
+
+        return records
+
+    finally:
+        release_db_connection(conn)
+
+
+def get_pvp_setting(key):
+    """Получает процент конвертации для типа активности"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT percent FROM pvp_settings WHERE key = %s", (key,))
+    result = cur.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+
+def set_pvp_setting(key, percent):
+    """Устанавливает процент конвертации для типа активности"""
+    if not (0 <= percent <= 100):
+        raise ValueError("Процент должен быть от 0 до 100")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO pvp_settings (key, percent)
+        VALUES (%s, %s)
+        ON CONFLICT (key) DO UPDATE SET percent = EXCLUDED.percent
+    """, (key, percent))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_all_pvp_settings():
+    """Получает все настройки PvP конвертации"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT key, percent FROM pvp_settings")
+    settings = dict(cur.fetchall())
+    conn.close()
+    return settings
+
+
+def add_pvp_points_from_workout(user_id, base_points, workout_type='exercise'):
+    """
+    Начисляет PvP очки на основе настроек конвертации
+    workout_type: 'exercise', 'complex', 'challenge'
+    """
+    # Определяем какой процент использовать
+    key_mapping = {
+        'exercise': 'exercise_pvp_percent',
+        'complex': 'complex_pvp_percent',
+        'challenge': 'challenge_pvp_percent'
+    }
+
+    key = key_mapping.get(workout_type, 'exercise_pvp_percent')
+    percent = get_pvp_setting(key)
+
+    if percent <= 0:
+        return 0  # Конвертация отключена
+
+    # Конвертируем очки
+    pvp_points = int(base_points * percent / 100)
+
+    if pvp_points > 0:
+        # Добавляем в scoreboard
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO scoreboard (user_id, exercise_id, period_start, period_end, rank, points)
+            VALUES (%s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, %s)
+        """, (user_id, -workout_type[:10], pvp_points))
+        conn.commit()
+        conn.close()
+
+    return pvp_points

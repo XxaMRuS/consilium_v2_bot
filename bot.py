@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
 
+# Загружаем переменные окружения из .env файла
+load_dotenv()
+
+# Отключаем PTBUserWarning
+logging.getLogger('telegram.ext').setLevel(logging.ERROR)
+
 # Импортируем веб-сервер для Render health check
 try:
     from web_server import start_web_server
@@ -24,10 +30,13 @@ from owner_handlers import (
     owner_ff_transfer_callback, owner_ff_select_user_callback, owner_ff_manual_input_callback,
     owner_ff_transfer_user_input, owner_ff_transfer_amount_input, owner_ff_amount_callback, owner_ff_custom_amount_callback,
     owner_ff_transfer_confirm_callback, owner_ff_transfer_cancel_callback,
-    WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM,
+    owner_pvp_settings_callback, owner_pvp_exercise_callback, owner_pvp_complex_callback, owner_pvp_challenge_callback,
+    owner_pvp_set_percent_callback, owner_pvp_custom_percent_callback, owner_pvp_custom_input,
+    WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM, WAITING_PVP_CUSTOM_INPUT,
     OWNER_MENU, OWNER_STATS, OWNER_BALANCES, OWNER_CHAMPIONS, OWNER_CHAMPIONS_HISTORY, OWNER_CHAMPIONS_MENU, OWNER_CHAMPIONS_CALCULATE, OWNER_CHAMPIONS_CALCULATE_CURRENT, OWNER_CHAMPIONS_CONFIRM,
     OWNER_COMPETITIONS, OWNER_COMPETITIONS_TOGGLE, OWNER_COMPETITIONS_ENABLE_ALL, OWNER_COMPETITIONS_DISABLE_ALL, OWNER_COMPETITIONS_ENABLE_BEGINNERS,
-    OWNER_FF_INFO, OWNER_FF_TRANSFER, OWNER_FF_TRANSFER_CANCEL, OWNER_FF_TRANSFER_CONFIRM_YES
+    OWNER_FF_INFO, OWNER_FF_TRANSFER, OWNER_FF_TRANSFER_CANCEL, OWNER_FF_TRANSFER_CONFIRM_YES,
+    OWNER_PVP_SETTINGS, OWNER_PVP_EXERCISE, OWNER_PVP_COMPLEX, OWNER_PVP_CHALLENGE
 )
 
 # Импорты модулей
@@ -53,12 +62,13 @@ from referral_handlers import (
 )
 from admin_handlers import admin_menu, admin_exercise_add_conversation, admin_exercise_edit_conversation, admin_challenge_add_conversation, admin_complex_add_conversation, admin_add_conversation
 from sport_handlers import (
-    sport_menu, exercises_list, challenges_list, complexes_list,
+    sport_menu, exercises_list, challenges_list, complexes_list, show_complex_info, start_complex_execution, set_complex_mode,
     sport_ratings, sport_top_workouts, sport_top_challenges, sport_top_complexes, sport_my_stats,
-    start_workout,
+    start_workout, handle_complex_exercise_result, handle_complex_media,
     SPORT_MENU, SPORT_EXERCISES, SPORT_CHALLENGES, SPORT_COMPLEXES, SPORT_RATINGS, SPORT_MY_STATS,
     SPORT_TOP_WORKOUTS, SPORT_TOP_CHALLENGES, SPORT_TOP_COMPLEXES, SPORT_BACK_TO_MAIN,
-    SPORT_WORKOUT_START, SPORT_CHALLENGE_JOIN, SPORT_COMPLEX_START,
+    SPORT_WORKOUT_START, SPORT_CHALLENGE_JOIN, SPORT_COMPLEX_START, SPORT_COMPLEX_DO,
+    SPORT_COMPLEX_MODE_SEPARATE, SPORT_COMPLEX_MODE_SINGLE,
     workout_conversation
 )
 from sport_challenge_handlers import (
@@ -95,6 +105,23 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Проверка загрузки API ключей
+logger.info("🔍 Проверка API ключей...")
+api_keys_status = {
+    'YANDEX_API_KEY': bool(os.getenv('YANDEX_API_KEY')),
+    'GROQ_API_KEY': bool(os.getenv('GROQ_API_KEY')),
+    'GEMINI_API_KEY': bool(os.getenv('GEMINI_API_KEY')),
+    'OPENROUTER_API_KEY': bool(os.getenv('OPENROUTER_API_KEY')),
+    'DEEPSEEK_API_KEY': bool(os.getenv('DEEPSEEK_API_KEY')),
+    'OPENAI_API_KEY': bool(os.getenv('OPENAI_API_KEY'))
+}
+
+for key, status in api_keys_status.items():
+    if status:
+        logger.info(f"✅ {key}: загружен")
+    else:
+        logger.warning(f"⚠️ {key}: не найден")
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 DATABASE_URL = os.getenv('DATABASE_URL')
@@ -314,7 +341,7 @@ async def handle_main_menu(update: Update, context) -> None:
 
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-        group_emoji = "🙂 Новичок" if stats['user_group'] == 'newbie' else "🤓 Профи"
+        group_emoji = "😊 Новичок" if stats['user_group'] == 'newbie' else "😎 Эксперт"
         percent_text = f"{stats['percent_from_top']:.1f}%" if stats['percent_from_top'] is not None else "N/A"
         username_text = f"@{stats['username']}" if stats['username'] else "(нет username)"
 
@@ -518,10 +545,14 @@ async def handle_callback_query(update: Update, context) -> None:
             # Присоединение к челленджу - используем реальную функцию
             await join_challenge_callback(update, context)
         elif callback_data.startswith(SPORT_COMPLEX_START):
-            # Выполнение комплекса
-            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            keyboard = [[InlineKeyboardButton("◀️ В комплексы", callback_data=SPORT_COMPLEXES)]]
-            await query.edit_message_text("🔨 **В разработке**\n\nВыполнение комплексов появится в следующем обновлении!", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+            # Показ информации о комплексе
+            await show_complex_info(update, context)
+        elif callback_data.startswith(SPORT_COMPLEX_DO):
+            # Начать выполнение комплекса
+            await start_complex_execution(update, context)
+        elif callback_data.startswith(SPORT_COMPLEX_MODE_SEPARATE) or callback_data.startswith(SPORT_COMPLEX_MODE_SINGLE):
+            # Установка режима выполнения комплекса
+            await set_complex_mode(update, context)
 
         # ==================== АДМИНКА ====================
         elif callback_data == "admin" or callback_data == "admin_back_to_panel" or callback_data == "admin_panel":
@@ -635,6 +666,24 @@ async def handle_callback_query(update: Update, context) -> None:
         elif callback_data.startswith("copy_id:"):
             # Копирование ID пользователя
             await owner_copy_id_callback(update, context)
+        elif callback_data == OWNER_PVP_SETTINGS:
+            # Настройки PvP конвертации
+            await owner_pvp_settings_callback(update, context)
+        elif callback_data == OWNER_PVP_EXERCISE:
+            # Настройка конвертации упражнений
+            await owner_pvp_exercise_callback(update, context)
+        elif callback_data == OWNER_PVP_COMPLEX:
+            # Настройка конвертации комплексов
+            await owner_pvp_complex_callback(update, context)
+        elif callback_data == OWNER_PVP_CHALLENGE:
+            # Настройка конвертации челленджей
+            await owner_pvp_challenge_callback(update, context)
+        elif callback_data.startswith(("pvp_exercise_set:", "pvp_complex_set:", "pvp_challenge_set:")):
+            # Установка выбранного процента
+            await owner_pvp_set_percent_callback(update, context)
+        elif callback_data.startswith(("pvp_exercise_custom", "pvp_complex_custom", "pvp_challenge_custom")):
+            # Ввод своего процента
+            await owner_pvp_custom_percent_callback(update, context)
 
         # ==================== АДМИНЫ ====================
         elif callback_data == "admin_admins_menu":
@@ -707,13 +756,12 @@ async def handle_callback_query(update: Update, context) -> None:
 
 def main() -> None:
     """Главная функция для запуска бота"""
-    # Создаём приложение с поддержкой JobQueue
-    try:
-        application = Application.builder().token(BOT_TOKEN).job_queue().build()
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось создать JobQueue: {e}")
-        logger.warning("⚠️ Продолжаем без JobQueue (автоматические задачи не будут работать)")
-        application = Application.builder().token(BOT_TOKEN).build()
+    # Инициализируем базу данных
+    from database_postgres import init_db
+    init_db()
+
+    # Создаём приложение (JobQueue не поддерживается в этой версии)
+    application = Application.builder().token(BOT_TOKEN).build()
 
     # Регистрируем обработчики команд
     application.add_handler(CommandHandler("start", start))
@@ -769,6 +817,25 @@ def main() -> None:
     # Регистрируем ConversationHandler для перевода FF
     application.add_handler(owner_ff_transfer_conversation)
 
+    # Создаём ConversationHandler для ввода своего процента PvP
+    from owner_handlers import WAITING_PVP_CUSTOM_INPUT
+    owner_pvp_custom_conversation = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(owner_pvp_custom_percent_callback, pattern=r'^pvp_(exercise|complex|challenge)_custom$')
+        ],
+        states={
+            WAITING_PVP_CUSTOM_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_pvp_custom_input),
+                CallbackQueryHandler(owner_pvp_settings_callback, pattern=f'^{OWNER_PVP_SETTINGS}$')
+            ],
+        },
+        fallbacks=[CallbackQueryHandler(owner_pvp_settings_callback, pattern=f'^{OWNER_PVP_SETTINGS}$')],
+        per_message=True  # Отслеживать CallbackQueryHandler для каждого сообщения
+    )
+
+    # Регистрируем ConversationHandler для ввода своего процента PvP
+    application.add_handler(owner_pvp_custom_conversation)
+
     # Регистрируем AI-обработчики
     application.add_handler(ai_advice_conversation)
     application.add_handler(ai_photo_conversation)
@@ -788,6 +855,8 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_BACK}$'))
 
     # Регистрируем обработчик для поискового ввода (должен быть последним)
+    application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL, handle_complex_media))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_complex_exercise_result))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_input_if_waiting))
 
     # Регистрируем универсальный обработчик для всех остальных callback
@@ -797,40 +866,8 @@ def main() -> None:
     logger.info("🔔 Инициализация системы уведомлений о рейтинге...")
     init_ranking_notifications_table()
 
-    # Добавляем ежедневную задачу на 12:00
-    job_queue = application.job_queue
-    if job_queue:
-        # Запускаем обновление рейтинга каждый день в 12:00
-        job_queue.run_daily(
-            callback=update_rankings_and_notify,
-            time=datetime.now().replace(hour=12, minute=0, second=0, microsecond=0),
-            data=BOT_TOKEN,
-            name='daily_ranking_update'
-        )
-        logger.info("✅ Ежедневное обновление рейтинга запланировано на 12:00")
-
-        # Запускаем расчёт чемпионов 1-го числа каждого месяца в 00:01
-        async def monthly_champions_job(context):
-            """Фоновая задача для расчёта чемпионов месяца с уведомлениями."""
-            try:
-                result = calculate_and_notify_champions(context)
-                if result:
-                    logger.info("✅ Расчёт чемпионов месяца завершён и уведомления отправлены")
-                else:
-                    logger.info("ℹ️ Расчёт чемпионов не был выполнен (возможно, уже был рассчитан)")
-            except Exception as e:
-                logger.error(f"❌ Ошибка расчёта чемпионов: {e}")
-
-        job_queue.run_monthly(
-            callback=monthly_champions_job,
-            day=1,  # 1-го числа
-            time=datetime.now().replace(hour=0, minute=1, second=0, microsecond=0),
-            name='monthly_champions_calculation'
-        )
-        logger.info("✅ Автоматический расчёт чемпионов запланирован на 1-е число 00:01")
-        logger.info("✅ Ежемесячный расчёт чемпионов запланирован на 1-е число в 00:01")
-    else:
-        logger.warning("⚠️ JobQueue не доступен, автоматические задачи не будут выполняться")
+    # JobQueue не поддерживается в этой версии
+    logger.info("ℹ️ Автоматические задачи через JobQueue не поддерживаются")
 
     # Запускаем веб-сервер для Render health check
     if WEB_SERVER_AVAILABLE:
@@ -843,7 +880,7 @@ def main() -> None:
     # Запускаем бота
     logger.info("Бот запущен...")
     logger.info("🏠 Готов к работе! Модули: Гора Успеха ✅, PvP ✅, Спорт ✅, Рефералы ✅, Админ ✅")
-    logger.info("🔔 Уведомления о рейтинге: каждый день в 12:00")
+    logger.info("ℹ️ JobQueue отключен - автоматические задачи не работают")
     logger.info("📱 Reply-кнопки: 🏠 Меню, ❌ Отмена - активированы")
 
     # Запуск с поддержкой Python 3.14+

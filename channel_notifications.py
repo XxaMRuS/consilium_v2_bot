@@ -7,7 +7,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # ID канала для уведомлений
-CHANNEL_ID = -100363185270
+CHANNEL_ID = -1003634185270
 CHANNEL_USERNAME = "@MDFruN_Sports_Channel"
 
 async def notify_new_exercise(bot, exercise_data, creator_name):

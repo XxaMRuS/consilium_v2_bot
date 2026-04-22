@@ -808,8 +808,8 @@ async def admin_exercise_add_points(update: Update, context: ContextTypes.DEFAUL
     # Показываем варианты сложности
     keyboard = [
         [
-            InlineKeyboardButton("🙂 Новичок", callback_data="ex_diff_beginner"),
-            InlineKeyboardButton("🤓 Профи", callback_data="ex_diff_pro")
+            InlineKeyboardButton("😊 Новичок", callback_data="ex_diff_beginner"),
+            InlineKeyboardButton("😎 Эксперт", callback_data="ex_diff_pro")
         ],
         [InlineKeyboardButton("❌ Отмена", callback_data="admin_cancel_exercise")]
     ]
@@ -835,7 +835,7 @@ async def admin_exercise_add_week(update: Update, context: ContextTypes.DEFAULT_
     keyboard = [
         [
             InlineKeyboardButton("Новичок", callback_data="ex_diff_beginner"),
-            InlineKeyboardButton("Профи", callback_data="ex_diff_pro")
+            InlineKeyboardButton("Эксперт", callback_data="ex_diff_pro")
         ]
     ]
 
@@ -864,7 +864,7 @@ async def admin_exercise_add_diff(update: Update, context: ContextTypes.DEFAULT_
     difficulty = diff_map.get(diff, 'newbie')
 
     # Тексты для отображения
-    difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Профи'
+    difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Эксперт'
     metric_names = {'reps': 'Повторы', 'time': 'Время', 'weight': 'Вес', 'distance': 'Дистанция'}
     metric_text = metric_names.get(metric, metric)
 
@@ -1007,7 +1007,7 @@ async def admin_challenge_add_desc(update: Update, context: ContextTypes.DEFAULT
     keyboard = []
     for ex in exercises[:10]:  # Показываем первые 10
         ex_id, name, metric, points, week, diff = ex
-        diff_text = '🙂' if diff == 'newbie' else '🤓'
+        diff_text = '😊' if diff == 'newbie' else '😎'
         button_text = f"⬜ {diff_text} {name}"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"ch_multi_ex_{ex_id}")])
 
@@ -1086,7 +1086,7 @@ async def admin_challenge_multi_exercise_select(update: Update, context: Context
         keyboard = []
         for ex in exercises[:10]:  # Показываем первые 10
             ex_id, name, metric, points, week, diff = ex
-            diff_text = '🙂' if diff == 'newbie' else '🤓'
+            diff_text = '😊' if diff == 'newbie' else '😎'
 
             # Показываем галочку если упражнение выбрано
             checkbox = '✅' if ex_id in selected else '⬜'
@@ -1751,7 +1751,7 @@ async def admin_list_exercises_callback(update: Update, context: ContextTypes.DE
     for ex in page_exercises:
         ex_id, name, metric, points, week, difficulty = ex
 
-        difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Профи'
+        difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Эксперт'
 
         # Компактная кнопка: только название, очки и уровень
         button_text = f"📋 {name} | ⭐{points} | {difficulty_text}"
@@ -1973,8 +1973,8 @@ async def admin_complex_points_input(update: Update, context: ContextTypes.DEFAU
 
     # Показываем варианты сложности
     keyboard = [
-        [InlineKeyboardButton("🙂 Новичок", callback_data="complex_diff_beginner")],
-        [InlineKeyboardButton("🤓 Профи", callback_data="complex_diff_pro")]
+        [InlineKeyboardButton("😊 Новичок", callback_data="complex_diff_beginner")],
+        [InlineKeyboardButton("😎 Эксперт", callback_data="complex_diff_pro")]
     ]
 
     await update.message.reply_text(
@@ -1994,8 +1994,8 @@ async def admin_complex_difficulty_select(update: Update, context: ContextTypes.
     context.user_data['complex_difficulty'] = difficulty
 
     difficulty_names = {
-        'beginner': '🙂 Новичок',
-        'pro': '🤓 Профи'
+        'beginner': '😊 Новичок',
+        'pro': '😎 Эксперт'
     }
 
     # Получаем список упражнений
@@ -2131,8 +2131,8 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
             'for_reps': '🔢 На количество'
         }
         difficulty_names = {
-            'beginner': '🙂 Новичок',
-            'pro': '🤓 Профи'
+            'beginner': '😊 Новичок',
+            'pro': '😎 Эксперт'
         }
 
         # Экранируем спецсимволы для Markdown
@@ -2218,8 +2218,8 @@ async def admin_list_complexes_callback(update: Update, context: ContextTypes.DE
         'for_reps': '🔢 На количество'
     }
     difficulty_names = {
-        'beginner': '🙂 Новичок',
-        'pro': '🤓 Профи'
+        'beginner': '😊 Новичок',
+        'pro': '😎 Эксперт'
     }
 
     if not complexes:
@@ -2302,8 +2302,8 @@ async def admin_view_complex_callback(update: Update, context: ContextTypes.DEFA
         'for_reps': '🔢 На количество'
     }
     difficulty_names = {
-        'beginner': '🙂 Новичок',
-        'pro': '🤓 Профи'
+        'beginner': '😊 Новичок',
+        'pro': '😎 Эксперт'
     }
 
     type_name = type_names.get(type_, type_)
@@ -2450,7 +2450,7 @@ async def admin_view_exercise_callback(update: Update, context: ContextTypes.DEF
     ex_id, name, description, metric, points, week, difficulty = exercise
     metric_names = {'reps': 'Повторы', 'time': 'Время', 'weight': 'Вес', 'distance': 'Дистанция'}
     metric_text = metric_names.get(metric, metric)
-    difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Профи'
+    difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Эксперт'
     week_text = f"Неделя {week}" if week else "Любая неделя"
 
     text = (
@@ -2621,8 +2621,8 @@ async def admin_edit_exercise_diff(update: Update, context: ContextTypes.DEFAULT
 
     keyboard = [
         [
-            InlineKeyboardButton("🙂 Новичок", callback_data=f"edit_diff_beginner_{exercise_id}"),
-            InlineKeyboardButton("🤓 Профи", callback_data=f"edit_diff_pro_{exercise_id}")
+            InlineKeyboardButton("😊 Новичок", callback_data=f"edit_diff_beginner_{exercise_id}"),
+            InlineKeyboardButton("😎 Эксперт", callback_data=f"edit_diff_pro_{exercise_id}")
         ],
         [InlineKeyboardButton("❌ Отмена", callback_data=f"admin_cancel_edit_{exercise_id}")]
     ]
@@ -2859,7 +2859,7 @@ async def admin_edit_exercise_diff_select(update: Update, context: ContextTypes.
     try:
         update_exercise(exercise_id, difficulty=difficulty)
 
-        difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Профи'
+        difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Эксперт'
         await query.edit_message_text(
             f"✅ Сложность изменена на: {difficulty_text}"
         )

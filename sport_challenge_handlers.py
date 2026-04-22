@@ -297,7 +297,8 @@ async def start_challenge_exercise(update: Update, context: ContextTypes.DEFAULT
         f"📊 Метрика: {metric_text}\n"
         f"📝 {description}\n\n"
         f"Введите результат {input_format}\n"
-        f"📌 Пример: {example}"
+        f"📌 Пример: {example}\n\n"
+        f"📹 Нам нужно убедиться в правильности выполнения упражнения. Пришлите ссылку на видео или фото."
     )
 
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=f"sport_my_challenge_{challenge_id}")]]

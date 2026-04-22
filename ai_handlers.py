@@ -49,14 +49,13 @@ async def ai_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text += "❌ Мгновенные советы (не доступен)\n"
 
-    if available['groq']:
-        text += "✅ Анализ прогресса (Groq)\n"
+    if available['groq'] or available['openrouter']:
+        text += "✅ Анализ прогресса (AI)\n"
     else:
         text += "❌ Анализ прогресса (не доступен)\n"
 
     keyboard = [
         [InlineKeyboardButton("💬 Спросить тренера", callback_data=AI_ADVICE)],
-        [InlineKeyboardButton("📸 Анализ фото", callback_data=AI_PHOTO)],
         [InlineKeyboardButton("⚡ Быстрый совет", callback_data=AI_RECOMMEND)],
         [InlineKeyboardButton("📊 Анализ прогресса", callback_data=AI_PROGRESS)],
         [InlineKeyboardButton("◀️ В меню", callback_data="sport")]

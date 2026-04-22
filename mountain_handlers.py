@@ -106,7 +106,7 @@ def generate_mountain_image(users, group, search_query=None):
 
     # Определяем цветовую схему
     primary_color = COLOR_GOLDEN if group == 'newbie' else COLOR_BRONZE
-    group_name = "🙂 Новички" if group == 'newbie' else "🤓 Профи"
+    group_name = "😊 Новички" if group == 'newbie' else "😎 Эксперты"
 
     # Рисуем гору
     mountain_points = [
@@ -221,8 +221,8 @@ async def mountain_menu_command(update: Update, context: ContextTypes.DEFAULT_TY
     debug_print(f"🏔️ mountain_menu_command: ВЫЗВАНА")
 
     keyboard = [
-        [InlineKeyboardButton("🟢 Гора Новичков", callback_data=MOUNTAIN_BEGINNERS_CALLBACK)],
-        [InlineKeyboardButton("🔴 Гора Профи", callback_data=MOUNTAIN_PROS_CALLBACK)],
+        [InlineKeyboardButton("😊 Гора Новичков", callback_data=MOUNTAIN_BEGINNERS_CALLBACK)],
+        [InlineKeyboardButton("😎 Гора Экспертов", callback_data=MOUNTAIN_PROS_CALLBACK)],
         [InlineKeyboardButton("🔍 Поиск по имени", callback_data=MOUNTAIN_SEARCH_CALLBACK)],
         [InlineKeyboardButton("◀️ Назад", callback_data='back_to_main')]
     ]
@@ -232,8 +232,8 @@ async def mountain_menu_command(update: Update, context: ContextTypes.DEFAULT_TY
     text = (
         "⛰️ **ГОРА УСПЕХА**\n\n"
         "Добро пожаловать на Гору Успеха! Здесь ты можешь:\n\n"
-        "🟢 **Новички** — рейтинг для начинающих атлетов\n"
-        "🔴 **Профи** — рейтинг для опытных атлетов\n"
+        "😊 **Новички** — рейтинг для начинающих атлетов\n"
+        "😎 **Эксперты** — рейтинг для опытных атлетов\n"
         "🔍 **Поиск** — найти своих друзей по имени или username\n\n"
         "Выбери гору для восхождения!"
     )
@@ -473,7 +473,7 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Формируем текст профиля
-    group_emoji = "🟢 Новичок" if stats['user_group'] == 'newbie' else "🤓 Профи"
+    group_emoji = "😊 Новичок" if stats['user_group'] == 'newbie' else "😎 Эксперт"
     percent_text = f"{stats['percent_from_top']:.1f}%" if stats['percent_from_top'] is not None else "N/A"
 
     username_text = f"📝 Username: @{stats['username']}\n" if stats['username'] else "📝 Username: (нет)\n"

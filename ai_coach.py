@@ -10,6 +10,10 @@ import base64
 import asyncio
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +23,17 @@ YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Логирование загрузки ключей
+logger.info(f"🔍 AI API Keys статус:")
+logger.info(f"  YANDEX_API_KEY: {'✅' if YANDEX_API_KEY else '❌'}")
+logger.info(f"  GROQ_API_KEY: {'✅' if GROQ_API_KEY else '❌'}")
+logger.info(f"  GEMINI_API_KEY: {'✅' if GEMINI_API_KEY else '❌'}")
+logger.info(f"  OPENROUTER_API_KEY: {'✅' if OPENROUTER_API_KEY else '❌'}")
+logger.info(f"  DEEPSEEK_API_KEY: {'✅' if DEEPSEEK_API_KEY else '❌'}")
+logger.info(f"  OPENAI_API_KEY: {'✅' if OPENAI_API_KEY else '❌'}")
 
 # Бесплатные модели OpenRouter (для fallback)
 FREE_MODELS = [
@@ -570,7 +585,9 @@ class AICoachSystem:
             "groq": bool(self.groq.api_key),
             "openrouter": bool(self.openrouter.api_key),
             "yandex": bool(self.yandex.api_key),
-            "gemini": bool(self.gemini.api_key)
+            "gemini": bool(self.gemini.api_key),  # Включаем если есть ключ
+            "deepseek": bool(DEEPSEEK_API_KEY),
+            "openai": bool(OPENAI_API_KEY)
         }
 
 

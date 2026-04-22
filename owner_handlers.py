@@ -3,7 +3,7 @@
 
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
 from database_postgres import get_db_connection, release_db_connection, is_owner
 
 logger = logging.getLogger(__name__)
@@ -28,8 +28,17 @@ OWNER_FF_TRANSFER_CANCEL = "owner_ff_transfer_cancel"
 OWNER_FF_TRANSFER_CONFIRM_YES = "owner_ff_transfer_confirm_yes"
 OWNER_BACK = "owner_back"
 
+# PvP настройки
+OWNER_PVP_SETTINGS = "owner_pvp_settings"
+OWNER_PVP_EXERCISE = "owner_pvp_exercise"
+OWNER_PVP_COMPLEX = "owner_pvp_complex"
+OWNER_PVP_CHALLENGE = "owner_pvp_challenge"
+
 # Состояния для ConversationHandler перевода FF
 WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM = range(3)
+
+# Состояния для ConversationHandler ввода своего процента PvP
+WAITING_PVP_CUSTOM_INPUT = range(10, 11)
 
 
 def escape_markdown(text):
@@ -91,9 +100,10 @@ async def owner_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         ],
         [
             InlineKeyboardButton("💸 Перевести FF", callback_data=OWNER_FF_TRANSFER),
-            InlineKeyboardButton("ℹ️ FF Информация", callback_data=OWNER_FF_INFO),
+            InlineKeyboardButton("⚔️ PvP настройки", callback_data=OWNER_PVP_SETTINGS),
         ],
         [
+            InlineKeyboardButton("ℹ️ FF Информация", callback_data=OWNER_FF_INFO),
             InlineKeyboardButton("◀️ В главное меню", callback_data="back_to_main"),
         ],
     ]
@@ -1570,4 +1580,397 @@ async def owner_competitions_enable_beginners_callback(update: Update, context: 
             pass
     finally:
         release_db_connection(conn)
+
+
+@owner_only
+async def owner_pvp_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает и позволяет редактировать настройки PvP конвертации."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    from database_postgres import get_all_pvp_settings
+
+    # Получаем текущие настройки
+    settings = get_all_pvp_settings()
+    exercise_percent = settings.get('exercise_pvp_percent', 7)
+    complex_percent = settings.get('complex_pvp_percent', 15)
+    challenge_percent = settings.get('challenge_pvp_percent', 20)
+
+    text = "⚔️ **НАСТРОЙКИ PvP КОНВЕРТАЦИИ**\n\n"
+    text += "💡 Процент очков, конвертируемых в PvP очки:\n\n"
+
+    text += f"🏋️ Упражнения: {exercise_percent}%\n"
+    text += f"📦 Комплексы: {complex_percent}%\n"
+    text += f"🏆 Челленджи: {challenge_percent}%\n\n"
+
+    text += "💡 Пример: При 100 очках за упражнение и 7% конвертации\n"
+    text += f"пользователь получит 7 PvP очков\n\n"
+
+    text += "📝 Выберите что изменить:"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(f"🏋️ Упражнения ({exercise_percent}%)", callback_data=OWNER_PVP_EXERCISE),
+            InlineKeyboardButton(f"📦 Комплексы ({complex_percent}%)", callback_data=OWNER_PVP_COMPLEX),
+        ],
+        [
+            InlineKeyboardButton(f"🏆 Челленджи ({challenge_percent}%)", callback_data=OWNER_PVP_CHALLENGE),
+            InlineKeyboardButton("ℹ️ Информация", callback_data=OWNER_FF_INFO),
+        ],
+        [
+            InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU),
+        ],
+    ]
+
+    try:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    except Exception as e:
+        if "not modified" not in str(e):
+            logger.error(f"Ошибка отображения настроек PvP: {e}")
+            raise
+
+
+@owner_only
+async def owner_pvp_exercise_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Изменяет процент конвертации для упражнений."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    from database_postgres import get_pvp_setting
+
+    current_percent = get_pvp_setting('exercise_pvp_percent')
+
+    text = f"🏋️ **КОНВЕРТАЦИЯ УПРАЖНЕНИЙ**\n\n"
+    text += f"Текущий процент: {current_percent}%\n\n"
+    text += "💡 Этот процент от очков за упражнение\n"
+    text += "конвертируется в PvP очки\n\n"
+    text += "📝 Выберите новый процент:"
+
+    # Быстрые варианты
+    percents = [0, 5, 7, 10, 15, 20, 25, 50]
+    keyboard = []
+
+    for i in range(0, len(percents), 2):
+        row = []
+        row.append(InlineKeyboardButton(f"{percents[i]}%", callback_data=f"pvp_exercise_set:{percents[i]}"))
+        if i + 1 < len(percents):
+            row.append(InlineKeyboardButton(f"{percents[i+1]}%", callback_data=f"pvp_exercise_set:{percents[i+1]}"))
+        keyboard.append(row)
+
+    keyboard.append([
+        InlineKeyboardButton("⌨️ Свой %", callback_data="pvp_exercise_custom"),
+        InlineKeyboardButton("◀️ Назад", callback_data=OWNER_PVP_SETTINGS),
+    ])
+
+    try:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    except Exception as e:
+        if "not modified" not in str(e):
+            logger.error(f"Ошибка отображения: {e}")
+            raise
+
+
+@owner_only
+async def owner_pvp_complex_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Изменяет процент конвертации для комплексов."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    from database_postgres import get_pvp_setting
+
+    current_percent = get_pvp_setting('complex_pvp_percent')
+
+    text = f"📦 **КОНВЕРТАЦИЯ КОМПЛЕКСОВ**\n\n"
+    text += f"Текущий процент: {current_percent}%\n\n"
+    text += "💡 Этот процент от очков за комплекс\n"
+    text += "конвертируется в PvP очки\n\n"
+    text += "📝 Выберите новый процент:"
+
+    # Быстрые варианты
+    percents = [0, 10, 15, 20, 25, 30, 50, 75]
+    keyboard = []
+
+    for i in range(0, len(percents), 2):
+        row = []
+        row.append(InlineKeyboardButton(f"{percents[i]}%", callback_data=f"pvp_complex_set:{percents[i]}"))
+        if i + 1 < len(percents):
+            row.append(InlineKeyboardButton(f"{percents[i+1]}%", callback_data=f"pvp_complex_set:{percents[i+1]}"))
+        keyboard.append(row)
+
+    keyboard.append([
+        InlineKeyboardButton("⌨️ Свой %", callback_data="pvp_complex_custom"),
+        InlineKeyboardButton("◀️ Назад", callback_data=OWNER_PVP_SETTINGS),
+    ])
+
+    try:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    except Exception as e:
+        if "not modified" not in str(e):
+            logger.error(f"Ошибка отображения: {e}")
+            raise
+
+
+@owner_only
+async def owner_pvp_challenge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Изменяет процент конвертации для челленджей."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    from database_postgres import get_pvp_setting
+
+    current_percent = get_pvp_setting('challenge_pvp_percent')
+
+    text = f"🏆 **КОНВЕРТАЦИЯ ЧЕЛЛЕНДЖЕЙ**\n\n"
+    text += f"Текущий процент: {current_percent}%\n\n"
+    text += "💡 Этот процент от очков за челлендж\n"
+    text += "конвертируется в PvP очки\n\n"
+    text += "📝 Выберите новый процент:"
+
+    # Быстрые варианты
+    percents = [0, 10, 20, 25, 30, 50, 75, 100]
+    keyboard = []
+
+    for i in range(0, len(percents), 2):
+        row = []
+        row.append(InlineKeyboardButton(f"{percents[i]}%", callback_data=f"pvp_challenge_set:{percents[i]}"))
+        if i + 1 < len(percents):
+            row.append(InlineKeyboardButton(f"{percents[i+1]}%", callback_data=f"pvp_challenge_set:{percents[i+1]}"))
+        keyboard.append(row)
+
+    keyboard.append([
+        InlineKeyboardButton("⌨️ Свой %", callback_data="pvp_challenge_custom"),
+        InlineKeyboardButton("◀️ Назад", callback_data=OWNER_PVP_SETTINGS),
+    ])
+
+    try:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    except Exception as e:
+        if "not modified" not in str(e):
+            logger.error(f"Ошибка отображения: {e}")
+            raise
+
+
+@owner_only
+async def owner_pvp_set_percent_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Устанавливает выбранный процент конвертации."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    # Извлекаем тип и процент из callback_data
+    callback_data = query.data
+    if not callback_data.startswith(("pvp_exercise_set:", "pvp_complex_set:", "pvp_challenge_set:")):
+        logger.error(f"Неверный формат callback_data: {callback_data}")
+        return
+
+    try:
+        parts = callback_data.split(":")
+        pvp_type = parts[0].replace("_set", "")  # exercise, complex, challenge
+        percent = int(parts[1])
+    except (IndexError, ValueError):
+        logger.error(f"Не удалось извлечь данные из: {callback_data}")
+        return
+
+    # Определяем ключ для базы данных
+    key_mapping = {
+        'pvp_exercise': 'exercise_pvp_percent',
+        'pvp_complex': 'complex_pvp_percent',
+        'pvp_challenge': 'challenge_pvp_percent'
+    }
+
+    key = key_mapping.get(pvp_type)
+    if not key:
+        logger.error(f"Неизвестный тип PvP: {pvp_type}")
+        return
+
+    try:
+        from database_postgres import set_pvp_setting
+
+        # Устанавливаем новый процент
+        set_pvp_setting(key, percent)
+
+        # Формируем название типа для отображения
+        type_names = {
+            'exercise': 'упражнений',
+            'complex': 'комплексов',
+            'challenge': 'челленджей'
+        }
+        type_name = type_names.get(pvp_type.replace("pvp_", ""), "")
+
+        text = f"✅ **НАСТРОЙКА ИЗМЕНЕНА**\n\n"
+        text += f"📊 Конвертация {type_name}\n"
+        text += f"🔄 Новый процент: {percent}%\n\n"
+        text += "💡 Изменения применены немедленно!"
+
+        keyboard = [
+            [InlineKeyboardButton("⚔️ Вернуться к настройкам", callback_data=OWNER_PVP_SETTINGS)],
+            [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)],
+        ]
+
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        except Exception as e:
+            if "not modified" not in str(e):
+                logger.error(f"Ошибка отображения: {e}")
+                raise
+
+        logger.info(f"✅ Изменён процент конвертации {type_name}: {percent}%")
+
+    except Exception as e:
+        logger.error(f"Ошибка установки процента: {e}")
+        text = f"❌ Ошибка установки: {e}"
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        except:
+            pass
+
+
+@owner_only
+async def owner_pvp_custom_percent_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает подсказку для ввода своего процента."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    callback_data = query.data
+
+    # Определяем тип на основе callback_data
+    if "exercise" in callback_data:
+        pvp_type = "exercise"
+        type_name = "упражнений"
+        back_callback = OWNER_PVP_EXERCISE
+    elif "complex" in callback_data:
+        pvp_type = "complex"
+        type_name = "комплексов"
+        back_callback = OWNER_PVP_COMPLEX
+    elif "challenge" in callback_data:
+        pvp_type = "challenge"
+        type_name = "челленджей"
+        back_callback = OWNER_PVP_CHALLENGE
+    else:
+        logger.error(f"Неизвестный тип в callback_data: {callback_data}")
+        return
+
+    text = f"📝 **СВОЙ ПРОЦЕНТ**\n\n"
+    text += f"Введите процент конвертации для {type_name}\n\n"
+    text += "💡 Введите число от 0 до 100"
+
+    keyboard = [
+        [InlineKeyboardButton("◀️ Назад", callback_data=back_callback)],
+        [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)],
+    ]
+
+    try:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+        # Сохраняем состояние для ввода
+        context.user_data['pvp_custom_type'] = pvp_type
+
+    except Exception as e:
+        if "not modified" not in str(e):
+            logger.error(f"Ошибка отображения: {e}")
+            raise
+
+
+@owner_only
+async def owner_pvp_custom_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает ввод своего процента."""
+    if not update.message:
+        return ConversationHandler.END
+
+    pvp_type = context.user_data.get('pvp_custom_type')
+    if not pvp_type:
+        text = "❌ Ошибка сеанса. Попробуйте снова."
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return ConversationHandler.END
+
+    user_input = update.message.text.strip()
+
+    try:
+        percent = int(user_input)
+        if not (0 <= percent <= 100):
+            raise ValueError("Процент должен быть от 0 до 100")
+    except ValueError:
+        text = "❌ **НЕВЕРНЫЙ ПРОЦЕНТ!**\n\n"
+        text += "Процент должен быть числом от 0 до 100\n\n"
+        text += "📝 Попробуйте снова или нажмите Отмена:"
+        keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=OWNER_PVP_SETTINGS)]]
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return WAITING_PVP_CUSTOM_INPUT
+
+    try:
+        from database_postgres import set_pvp_setting
+
+        # Определяем ключ
+        key_mapping = {
+            'exercise': 'exercise_pvp_percent',
+            'complex': 'complex_pvp_percent',
+            'challenge': 'challenge_pvp_percent'
+        }
+
+        key = key_mapping.get(pvp_type)
+        if not key:
+            text = "❌ Ошибка типа"
+            keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            return ConversationHandler.END
+
+        # Устанавливаем процент
+        set_pvp_setting(key, percent)
+
+        # Формируем название
+        type_names = {
+            'exercise': 'упражнений',
+            'complex': 'комплексов',
+            'challenge': 'челленджей'
+        }
+        type_name = type_names.get(pvp_type, "")
+
+        text = f"✅ **НАСТРОЙКА ИЗМЕНЕНА**\n\n"
+        text += f"📊 Конвертация {type_name}\n"
+        text += f"🔄 Новый процент: {percent}%\n\n"
+        text += "💡 Изменения применены немедленно!"
+
+        keyboard = [
+            [InlineKeyboardButton("⚔️ Вернуться к настройкам", callback_data=OWNER_PVP_SETTINGS)],
+            [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)],
+        ]
+
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        logger.info(f"✅ Установлен свой процент {type_name}: {percent}%")
+
+    except Exception as e:
+        logger.error(f"Ошибка установки процента: {e}")
+        text = f"❌ Ошибка: {e}"
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    finally:
+        context.user_data.pop('pvp_custom_type', None)
+
+    return ConversationHandler.END
 
