@@ -2509,10 +2509,10 @@ async def owner_channel_change_id_callback(update: Update, context: ContextTypes
         text += "3. **Введи ID канала** в формате:\n"
         text += "   • `-100XXXXXXXXX` (для публичных/приватных)\n"
         text += "   • `@channelname` (для публичных)\n\n"
-        text += "4. **Перезапусти бота** после изменения!\n\n"
-        text += "💡 **Где изменить:**\n"
-        text += "• В файле `.env`: `NOTIFICATION_CHANNEL_ID=-100XXXXXXXXX`\n"
-        text += "• Или в Render → Environment Variables\n\n"
+        text += "4. **Перезапусти бота** после изменения\\n\\n"
+        text += "💡 **Где изменить:**\\n\\n"
+        text += "• В файле .env: NOTIFICATION_CHANNEL_ID\\n"
+        text += "• Или в Render - Environment Variables\\n\\n"
         text += "⚠️ После изменения ID перезапусти бота!"
 
         keyboard = [
