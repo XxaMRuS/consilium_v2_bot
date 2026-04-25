@@ -43,6 +43,7 @@ OWNER_PVP_TRANSFER_CONFIRM_YES = "owner_pvp_transfer_confirm_yes"
 # Каналы
 OWNER_CHANNEL_CHECK = "owner_channel_check"
 OWNER_CHANNEL_RECONNECT = "owner_channel_reconnect"
+OWNER_CHANNEL_MESSAGE = "owner_channel_message"
 OWNER_CHANNEL_CANCEL = "owner_channel_cancel"
 
 # Состояния для ConversationHandler перевода FF
@@ -53,6 +54,9 @@ WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CON
 
 # Состояния для ConversationHandler ввода своего процента PvP
 WAITING_PVP_CUSTOM_INPUT = range(10, 11)
+
+# Состояния для ConversationHandler отправки сообщения в канал
+WAITING_CHANNEL_MESSAGE = range(30, 31)
 
 
 def escape_markdown(text):
@@ -2477,7 +2481,7 @@ async def owner_channel_check_callback(update: Update, context: ContextTypes.DEF
             ])
 
         keyboard.append([InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)])
-        keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data=OWNER_CHANNEL_CHECK)])
+        keyboard.append([InlineKeyboardButton("📢 Сообщение собственника", callback_data=OWNER_CHANNEL_MESSAGE)])
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -2666,3 +2670,119 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
 
     except Exception as e:
         logger.error(f"Ошибка переподключения канала: {e}")
+
+
+@owner_only
+async def owner_channel_message_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Начинает процесс отправки сообщения в канал."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        # Проверяем, настроен ли канал
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
+
+        if not notification_channel:
+            text = "❌ КАНАЛ НЕ НАСТРОЕН\n\n"
+            text += "Канал уведомлений не указан в переменных окружения.\n\n"
+            text += "📝 Сначала настрой канал в кнопке 'Изменить ID канала'"
+
+            keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+
+            try:
+                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            except BadRequest as e:
+                if "Message is not modified" not in str(e):
+                    raise
+            return
+
+        text = "📢 СООБЩЕНИЕ В КАНАЛ\n\n"
+        text += "✍️ Напиши сообщение, которое нужно отправить в канал.\n\n"
+        text += "💡 Можно использовать:\n"
+        text += "• Объявления о розыгрышах\n"
+        text += "• Информация о соревнованиях\n"
+        text += "• Важные оповещения\n"
+        text += "• Любые другие уведомления\n\n"
+        text += "⏰ Отправь сообщение сейчас (или /cancel для отмены):"
+
+        keyboard = [[InlineKeyboardButton("◀️ Отмена", callback_data=OWNER_CHANNEL_CHECK)]]
+
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        except BadRequest as e:
+            if "Message is not modified" not in str(e):
+                raise
+
+        # Устанавливаем состояние ожидания сообщения
+        return WAITING_CHANNEL_MESSAGE
+
+    except Exception as e:
+        logger.error(f"Ошибка начала отправки сообщения: {e}")
+
+
+@owner_only
+async def owner_channel_message_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправляет сообщение в канал."""
+    try:
+        message_text = update.message.text
+
+        if not message_text:
+            await update.message.reply_text("❌ Сообщение не может быть пустым. Попробуй еще раз или /cancel")
+            return WAITING_CHANNEL_MESSAGE
+
+        # Получаем ID канала
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
+
+        if not notification_channel:
+            await update.message.reply_text("❌ Канал не настроен. Настрой канал в меню собственника.")
+            return ConversationHandler.END
+
+        # Отправляем сообщение в канал
+        try:
+            bot = context.bot
+            await bot.send_message(
+                chat_id=notification_channel,
+                text=f"📢 **СООБЩЕНИЕ ОТ ОРГАНИЗАТОРА**\n\n{message_text}",
+                parse_mode="Markdown"
+            )
+
+            await update.message.reply_text(
+                f"✅ Сообщение успешно отправлено в канал!\n\n"
+                f"📝 Текст сообщения:\n{message_text}"
+            )
+
+            logger.info(f"Собственник отправил сообщение в канал: {message_text[:100]}...")
+
+        except Exception as e:
+            error_msg = str(e)
+            await update.message.reply_text(
+                f"❌ Ошибка отправки сообщения в канал:\n"
+                f"{error_msg[:100]}\n\n"
+                f"💡 Проверь:\n"
+                f"• Бот добавлен в канал\n"
+                f"• Бот имеет права администратора\n"
+                f"• ID канала указан верно"
+            )
+            logger.error(f"Ошибка отправки сообщения в канал: {e}")
+
+        return ConversationHandler.END
+
+    except Exception as e:
+        logger.error(f"Ошибка отправки сообщения: {e}")
+        return ConversationHandler.END
+
+
+@owner_only
+async def owner_channel_message_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отменяет отправку сообщения."""
+    await update.message.reply_text("❌ Отправка сообщения отменена")
+    return ConversationHandler.END

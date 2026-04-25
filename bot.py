@@ -36,14 +36,16 @@ from owner_handlers import (
     owner_pvp_transfer_user_input, owner_pvp_transfer_amount_input, owner_pvp_amount_callback, owner_pvp_custom_amount_callback,
     owner_pvp_transfer_confirm_callback, owner_pvp_transfer_cancel_callback,
     owner_channel_check_callback, owner_channel_change_id_callback, owner_channel_reconnect_callback,
+    owner_channel_message_callback, owner_channel_message_send, owner_channel_message_cancel,
     WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM, WAITING_PVP_CUSTOM_INPUT,
     WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CONFIRM,
+    WAITING_CHANNEL_MESSAGE,
     OWNER_MENU, OWNER_STATS, OWNER_BALANCES, OWNER_CHAMPIONS, OWNER_CHAMPIONS_HISTORY, OWNER_CHAMPIONS_MENU, OWNER_CHAMPIONS_CALCULATE, OWNER_CHAMPIONS_CALCULATE_CURRENT, OWNER_CHAMPIONS_CONFIRM,
     OWNER_COMPETITIONS, OWNER_COMPETITIONS_TOGGLE, OWNER_COMPETITIONS_ENABLE_ALL, OWNER_COMPETITIONS_DISABLE_ALL, OWNER_COMPETITIONS_ENABLE_BEGINNERS,
     OWNER_FF_INFO, OWNER_FF_TRANSFER, OWNER_FF_TRANSFER_CANCEL, OWNER_FF_TRANSFER_CONFIRM_YES,
     OWNER_PVP_SETTINGS, OWNER_PVP_EXERCISE, OWNER_PVP_COMPLEX, OWNER_PVP_CHALLENGE,
     OWNER_PVP_TRANSFER, OWNER_PVP_TRANSFER_CANCEL, OWNER_PVP_TRANSFER_CONFIRM_YES,
-    OWNER_CHANNEL_CHECK, OWNER_CHANNEL_RECONNECT
+    OWNER_CHANNEL_CHECK, OWNER_CHANNEL_RECONNECT, OWNER_CHANNEL_MESSAGE
 )
 
 # Импорты модулей
@@ -692,6 +694,9 @@ async def handle_callback_query(update: Update, context) -> None:
         elif callback_data == OWNER_CHANNEL_RECONNECT:
             # Переподключение к каналу
             await owner_channel_reconnect_callback(update, context)
+        elif callback_data == OWNER_CHANNEL_MESSAGE:
+            # Сообщение в канал от собственника
+            await owner_channel_message_callback(update, context)
         elif callback_data == "owner_channel_change_id":
             # Изменение ID канала
             await owner_channel_change_id_callback(update, context)
@@ -888,6 +893,26 @@ def main() -> None:
 
     # Регистрируем ConversationHandler для ввода своего процента PvP
     application.add_handler(owner_pvp_custom_conversation)
+
+    # Создаём ConversationHandler для отправки сообщения в канал
+    owner_channel_message_conversation = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(owner_channel_message_callback, pattern=f'^{OWNER_CHANNEL_MESSAGE}$')
+        ],
+        states={
+            WAITING_CHANNEL_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_channel_message_send),
+                CommandHandler("cancel", owner_channel_message_cancel),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", owner_channel_message_cancel),
+            CallbackQueryHandler(owner_channel_check_callback, pattern=f'^{OWNER_CHANNEL_CHECK}$')
+        ],
+    )
+
+    # Регистрируем ConversationHandler для отправки сообщения в канал
+    application.add_handler(owner_channel_message_conversation)
 
     # Регистрируем AI-обработчики
     application.add_handler(ai_advice_conversation)
