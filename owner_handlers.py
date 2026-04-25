@@ -3,6 +3,7 @@
 
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
 from database_postgres import get_db_connection, release_db_connection, is_owner
 
@@ -2480,7 +2481,14 @@ async def owner_channel_check_callback(update: Update, context: ContextTypes.DEF
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        try:
+            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        except BadRequest as e:
+            if "Message is not modified" in str(e):
+                # Игнорируем ошибку, если сообщение не изменилось
+                pass
+            else:
+                raise
 
     except Exception as e:
         logger.error(f"Ошибка проверки каналов: {e}")
@@ -2495,91 +2503,6 @@ async def owner_channel_check_callback(update: Update, context: ContextTypes.DEF
 @owner_only
 
 
-async def owner_channel_change_id_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показывает инструкции для изменения ID канала."""
-    query = update.callback_query
-
-    try:
-        await query.answer()
-
-        text = "📝 ИЗМЕНЕНИЕ ID КАНАЛА\n\n"
-        text += "📋 ИНСТРУКЦИЯ:\n\n"
-        text += "1. Добавь бота в канал как администратор\n"
-        text += "2. Узнай ID канала через @getmyid_bot\n"
-        text += "3. Измени в .env: NOTIFICATION_CHANNEL_ID\n"
-        text += "4. Или в Render - Environment Variables\n"
-        text += "5. Перезапусти бота после изменения"
-
-        keyboard = [
-            [InlineKeyboardButton("🔄 Проверить подключение", callback_data=OWNER_CHANNEL_CHECK)],
-            [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
-        ]
-
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-
-    except Exception as e:
-        logger.error(f"Ошибка отображения инструкций: {e}")
-# -*- coding: utf-8 -*-
-"""
-Функции для управления каналами - добавь в конец owner_handlers.py
-"""
-
-
-@owner_only
-async def owner_channel_check_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показывает информацию о каналах и их статусе."""
-    query = update.callback_query
-
-    try:
-        await query.answer()
-
-        text = "📢 ПРОВЕРКА КАНАЛОВ\n\n"
-        text += "Проверка подключения бота к каналам:\n\n"
-
-        keyboard = []
-
-        # Проверяем канал уведомлений из переменных окружения
-        import os
-        from dotenv import load_dotenv
-        load_dotenv()
-
-        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
-
-        if notification_channel:
-            text += f"📢 Канал уведомлений:\n"
-            text += f"🆔 ID: {notification_channel}\n"
-            text += f"✅ Настроен в переменных окружения\n\n"
-
-            keyboard.append([
-                InlineKeyboardButton("🔄 Переподключить канал", callback_data=OWNER_CHANNEL_RECONNECT),
-                InlineKeyboardButton("📝 Изменить ID канала", callback_data="owner_channel_change_id")
-            ])
-        else:
-            text += "📢 Канал уведомлений:\n"
-            text += "❌ Не настроен в переменных окружения\n\n"
-
-            keyboard.append([
-                InlineKeyboardButton("📝 Добавить канал", callback_data="owner_channel_change_id")
-            ])
-
-        keyboard.append([InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)])
-        keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data=OWNER_CHANNEL_CHECK)])
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await query.edit_message_text(text, reply_markup=reply_markup)
-
-    except Exception as e:
-        logger.error(f"Ошибка проверки каналов: {e}")
-        text = f"❌ Ошибка проверки каналов: {e}"
-        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
-        try:
-            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
-
-
-@owner_only
 async def owner_channel_change_id_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показывает инструкции для изменения ID канала."""
     query = update.callback_query
@@ -2704,24 +2627,10 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
                 text = f"❌ ОШИБКА ПОДКЛЮЧЕНИЯ\n\n"
                 text += f"Не удалось подключиться к каналу:\n"
                 text += f"{notification_channel}\n\n"
-                text += f"Ошибка: {str(e)[:100]}\n\n"
-
-                if "chat not found" in str(e).lower():
-                    text += "💡 Возможные причины:\n"
-                    text += "• Неверный ID канала\n"
-                    text += "• Бот не добавлен в канал\n"
-                    text += "• Канал не существует\n\n"
-                elif "bot was blocked" in str(e).lower():
-                    text += "💡 Причина: Бот заблокирован в канале\n\n"
-                elif "not enough rights" in str(e).lower():
-                    text += "💡 Причина: Недостаточно прав у бота\n\n"
-
-                text += "📝 Попробуй:\n"
-                text += "1. Изменить ID канала\n"
-                text += "2. Добавить бота в канал\n"
-                text += "3. Выдать права администратора"
+                text += f"Ошибка: {str(e)[:100]}"
 
                 keyboard = [
+                    [InlineKeyboardButton("🔄 Попробовать снова", callback_data=OWNER_CHANNEL_RECONNECT)],
                     [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
                     [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
                 ]
@@ -2729,11 +2638,13 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
                 await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
                 return
 
+        # Если канал не настроен
+        keyboard = [
+            [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
+            [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
+        ]
+
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+
     except Exception as e:
-        logger.error(f"Ошибка переподключения: {e}")
-        text = f"❌ Ошибка: {e}"
-        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
-        try:
-            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        logger.error(f"Ошибка переподключения канала: {e}")
