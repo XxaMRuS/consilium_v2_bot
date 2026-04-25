@@ -2413,7 +2413,6 @@ async def owner_pvp_transfer_amount_input(update: Update, context: ContextTypes.
     except ValueError:
         await update.message.reply_text("❌ Введи число. Попробуй еще раз:")
         return WAITING_PVP_TRANSFER_AMOUNT
-    except Exception as e:
 
 
 @owner_only
