@@ -2620,7 +2620,13 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
                     [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
                 ]
 
-                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+                try:
+                    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+                except BadRequest as e:
+                    if "Message is not modified" in str(e):
+                        pass  # Игнорируем, если сообщение не изменилось
+                    else:
+                        raise
                 return
 
             except Exception as e:
@@ -2635,7 +2641,13 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
                     [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
                 ]
 
-                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+                try:
+                    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+                except BadRequest as e:
+                    if "Message is not modified" in str(e):
+                        pass  # Игнорируем, если сообщение не изменилось
+                    else:
+                        raise
                 return
 
         # Если канал не настроен
@@ -2644,7 +2656,13 @@ async def owner_channel_reconnect_callback(update: Update, context: ContextTypes
             [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
         ]
 
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        except BadRequest as e:
+            if "Message is not modified" in str(e):
+                pass  # Игнорируем, если сообщение не изменилось
+            else:
+                raise
 
     except Exception as e:
         logger.error(f"Ошибка переподключения канала: {e}")
