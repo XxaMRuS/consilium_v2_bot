@@ -1307,16 +1307,19 @@ async def owner_ff_transfer_confirm_callback(update: Update, context: ContextTyp
             notification_text += f"📊 Твой баланс: {new_balance} FF\n\n"
             notification_text += f"💡 Используй FF для PvP ставок и покупок!"
 
+            logger.info(f"📤 Попытка отправить уведомление о FF пользователю {target_user['telegram_id']}...")
+
             await bot.send_message(
                 chat_id=target_user['telegram_id'],
                 text=notification_text,
                 parse_mode="Markdown"
             )
             notification_sent = True
-            logger.info(f"📬 Уведомление отправлено пользователю {target_user['telegram_id']}")
+            logger.info(f"✅ Уведомление об FF успешно отправлено пользователю {target_user['telegram_id']}")
         except Exception as e:
             notification_error = str(e)
-            logger.warning(f"Не удалось отправить уведомление пользователю {target_user['telegram_id']}: {e}")
+            logger.error(f"❌ Ошибка отправки уведомления об FF пользователю {target_user['telegram_id']}: {e}")
+            logger.error(f"Тип ошибки: {type(e).__name__}")
 
         safe_first_name = escape_markdown(target_user['first_name'])
         username_str = f"@{target_user['username']}" if target_user['username'] else "(нет username)"
@@ -2321,10 +2324,14 @@ async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTy
 
                 if user_info:
                     first_name_user = user_info[1] or "Пользователь"
+                    # Экранируем имя для Markdown
+                    safe_first_name = escape_markdown(first_name_user)
                     notification_text = f"🎁 **ТЫ ПОЛУЧИЛ PvP ОЧКИ!**\n\n"
                     notification_text += f"🎯 Ты получил: {amount} PvP очков\n"
                     notification_text += f"💎 Твой баланс: {new_pvp_balance} PvP\n\n"
                     notification_text += f"💡 Используй PvP для вызова на дуэли!"
+
+                    logger.info(f"📤 Попытка отправить уведомление о PvP пользователю {user_id}...")
 
                     await bot.send_message(
                         chat_id=user_id,
@@ -2332,20 +2339,24 @@ async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTy
                         parse_mode="Markdown"
                     )
                     notification_sent = True
-                    logger.info(f"📬 Уведомление о PvP отправлено пользователю {user_id}")
+                    logger.info(f"✅ Уведомление о PvP успешно отправлено пользователю {user_id}")
             except Exception as e:
                 notification_error = str(e)
-                logger.warning(f"Не удалось отправить уведомление о PvP пользователю {user_id}: {e}")
+                logger.error(f"❌ Ошибка отправки уведомления о PvP пользователю {user_id}: {e}")
+                logger.error(f"Тип ошибки: {type(e).__name__}")
 
             # Показываем результат собственнику
             if user_info:
                 first_name = user_info[1] or "Пользователь"
                 username = user_info[3] or ""
+                # Экранируем для Markdown
+                safe_first_name = escape_markdown(first_name)
                 # Показываем Имя + Никнейм (если есть)
                 if username:
-                    display_user = f"{first_name} (@{username})"
+                    safe_username = escape_markdown(f"@{username}")
+                    display_user = f"{safe_first_name} ({safe_username})"
                 else:
-                    display_user = first_name
+                    display_user = safe_first_name
 
                 text = f"✅ **ПЕРЕВОД ВЫПОЛНЕН**\n\n"
                 text += f"👤 {display_user}\n"
