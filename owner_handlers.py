@@ -946,7 +946,8 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
         text += f"👤 {safe_first_name} {safe_username}\n"
         text += f"🆔 ID: {telegram_id}\n"
         text += f"💰 Текущий баланс: {current_ff} FFCoin\n\n"
-        text += "📝 Выберите сумму:"
+        text += "📝 Выберите сумму (положительную для начисления, отрицательную для списания):\n\n"
+        text += "⚠️ Для СПИСАНИЯ используй кнопку ниже или введи -100, -500 и т.д."
 
         # Быстрые суммы
         keyboard = [
@@ -961,6 +962,10 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
             [
                 InlineKeyboardButton("1000 FF", callback_data="ff_amount:1000"),
                 InlineKeyboardButton("⌨️ Своя сумма", callback_data="ff_custom_amount"),
+            ],
+            [
+                InlineKeyboardButton("❌ Списать 100", callback_data="ff_amount:-100"),
+                InlineKeyboardButton("❌ Списать 500", callback_data="ff_amount:-500"),
             ],
             [
                 InlineKeyboardButton("◀️ Назад", callback_data=OWNER_FF_TRANSFER),
@@ -1198,14 +1203,12 @@ async def owner_ff_transfer_amount_input(update: Update, context: ContextTypes.D
 
     amount_input = update.message.text.strip()
 
-    # Проверяем, что это положительное число
+    # Проверяем, что это число
     try:
         amount = int(amount_input)
-        if amount <= 0:
-            raise ValueError("Amount must be positive")
     except ValueError:
         text = "❌ **Неверная сумма!**\n\n"
-        text += "Сумма должна быть положительным числом.\n"
+        text += "Введите число (положительное для начисления, отрицательное для списания).\n"
         text += "📝 Попробуйте снова или нажмите Отмена:"
 
         keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=OWNER_FF_TRANSFER_CANCEL)]]
@@ -2167,20 +2170,23 @@ async def show_pvp_amount_menu(update, user_id, message=False):
         pvp_stats = get_user_pvp_stats(user_id)
         current_pvp = pvp_stats.get('total_points', 0) if pvp_stats else 0
 
-        text = f"💎 **ПЕРЕВОД PvP ОЧКОВ**\n\n"
+        text = f"🏆 **ПЕРЕВОД FruNStatus**\n\n"
         text += f"👤 Пользователь: {display_user}\n"
-        text += f"🎯 Текущие PvP: {current_pvp}\n\n"
-        text += "Выбери сумму для перевода:"
+        text += f"🎯 Текущий FruNStatus: {current_pvp}\n\n"
+        text += "Выбери сумму (положительная = начисление, отрицательная = списание):\n\n"
+        text += "⚠️ Для СПИСАНИЯ используй кнопки ниже или введи -100, -500"
 
     keyboard = [
-        [InlineKeyboardButton("10 PvP", callback_data="pvp_amount:10")],
-        [InlineKeyboardButton("50 PvP", callback_data="pvp_amount:50")],
-        [InlineKeyboardButton("100 PvP", callback_data="pvp_amount:100")],
-        [InlineKeyboardButton("200 PvP", callback_data="pvp_amount:200")],
-        [InlineKeyboardButton("500 PvP", callback_data="pvp_amount:500")],
-        [InlineKeyboardButton("1000 PvP", callback_data="pvp_amount:1000")],
+        [InlineKeyboardButton("🏆 +10", callback_data="pvp_amount:10")],
+        [InlineKeyboardButton("🏆 +50", callback_data="pvp_amount:50")],
+        [InlineKeyboardButton("🏆 +100", callback_data="pvp_amount:100")],
+        [InlineKeyboardButton("🏆 +200", callback_data="pvp_amount:200")],
+        [InlineKeyboardButton("🏆 +500", callback_data="pvp_amount:500")],
+        [InlineKeyboardButton("🏆 +1000", callback_data="pvp_amount:1000")],
         [InlineKeyboardButton("⌨️ Своя сумма", callback_data="pvp_custom_amount")],
-        [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+        [InlineKeyboardButton("❌ -100", callback_data="pvp_amount:-100")],
+        [InlineKeyboardButton("❌ -500", callback_data="pvp_amount:-500")],
+        [InlineKeyboardButton("◀️ Отмена", callback_data="owner_pvp_transfer_cancel")]
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -2233,10 +2239,6 @@ async def owner_pvp_transfer_amount_input(update: Update, context: ContextTypes.
     try:
         amount = int(amount_input)
 
-        if amount <= 0:
-            await update.message.reply_text("❌ Сумма должна быть положительной. Попробуй еще раз:")
-            return WAITING_PVP_TRANSFER_AMOUNT
-
         context.user_data['pvp_amount'] = amount
         await show_pvp_confirm(update, context, message=True)
 
@@ -2269,10 +2271,15 @@ async def show_pvp_confirm(update, context, message=False):
         else:
             display_user = first_name
 
-        text = f"💎 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+        text = f"🏆 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
         text += f"👤 Получатель: {display_user}\n"
-        text += f"🎯 Сумма: {amount} PvP Рейтинга\n\n"
-        text += "Подтвердишь перевод?"
+
+        if amount >= 0:
+            text += f"🎯 Начислить: +{amount} FruNStatus\n\n"
+        else:
+            text += f"❌ Списать: {amount} FruNStatus\n\n"
+
+        text += "Подтвердишь?"
     else:
         text = "❌ Ошибка получения данных пользователя"
 
