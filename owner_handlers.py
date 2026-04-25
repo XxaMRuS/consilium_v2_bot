@@ -34,8 +34,21 @@ OWNER_PVP_EXERCISE = "owner_pvp_exercise"
 OWNER_PVP_COMPLEX = "owner_pvp_complex"
 OWNER_PVP_CHALLENGE = "owner_pvp_challenge"
 
+# PvP перевод очков (аналогично FF)
+OWNER_PVP_TRANSFER = "owner_pvp_transfer"
+OWNER_PVP_TRANSFER_CANCEL = "owner_pvp_transfer_cancel"
+OWNER_PVP_TRANSFER_CONFIRM_YES = "owner_pvp_transfer_confirm_yes"
+
+# Каналы
+OWNER_CHANNEL_CHECK = "owner_channel_check"
+OWNER_CHANNEL_RECONNECT = "owner_channel_reconnect"
+OWNER_CHANNEL_CANCEL = "owner_channel_cancel"
+
 # Состояния для ConversationHandler перевода FF
 WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM = range(3)
+
+# Состояния для ConversationHandler перевода PvP (аналогично FF)
+WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CONFIRM = range(20, 23)
 
 # Состояния для ConversationHandler ввода своего процента PvP
 WAITING_PVP_CUSTOM_INPUT = range(10, 11)
@@ -100,6 +113,10 @@ async def owner_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         ],
         [
             InlineKeyboardButton("💸 Перевести FF", callback_data=OWNER_FF_TRANSFER),
+            InlineKeyboardButton("💎 Перевести PvP", callback_data=OWNER_PVP_TRANSFER),
+        ],
+        [
+            InlineKeyboardButton("📢 Каналы", callback_data=OWNER_CHANNEL_CHECK),
             InlineKeyboardButton("⚔️ PvP настройки", callback_data=OWNER_PVP_SETTINGS),
         ],
         [
@@ -1974,3 +1991,673 @@ async def owner_pvp_custom_input(update: Update, context: ContextTypes.DEFAULT_T
 
     return ConversationHandler.END
 
+
+# ========== PvP ПЕРЕВОД ОЧКОВ ==========
+
+
+@owner_only
+async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Начинает процесс перевода PvP очков."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        # Получаем список пользователей
+        from database_postgres import get_all_users, get_user_pvp_stats
+        users = get_all_users(limit=20)
+
+        if not users:
+            await query.edit_message_text("❌ Нет пользователей для перевода.")
+            return ConversationHandler.END
+
+        # Формируем клавиатуру с пользователями
+        keyboard = []
+        for user in users:
+            user_id = user[0]
+            first_name = user[1] or "Пользователь"
+            last_name = user[2] or ""
+            username = user[3] or ""
+
+            # Получаем PvP очки пользователя
+            try:
+                pvp_stats = get_user_pvp_stats(user_id)
+                pvp_points = pvp_stats.get('total_points', 0) if pvp_stats else 0
+            except Exception as e:
+                logger.warning(f"Не удалось получить PvP для {user_id}: {e}")
+                pvp_points = 0
+
+            # Показываем Имя + Никнейм (если есть) + PvP очки
+            if username:
+                display_name = f"{first_name} (@{username})"
+            else:
+                display_name = f"{first_name} {last_name}".strip()
+
+            # Добавляем PvP очки
+            button_text = f"{display_name} - {pvp_points} PvP"
+
+            if len(button_text) > 50:
+                # Если слишком длинно, обрезаем имя, но оставляем PvP
+                if len(display_name) > 35:
+                    display_name = display_name[:32] + "..."
+                button_text = f"{display_name} - {pvp_points} PvP"
+
+            keyboard.append([InlineKeyboardButton(
+                button_text,
+                callback_data=f"pvp_select_user:{user_id}"
+            )])
+
+        keyboard.extend([
+            [InlineKeyboardButton("⌨️ Ввести ID вручную", callback_data="pvp_manual_input")],
+            [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+        ])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        text = "💎 **ПЕРЕВОД PvP ОЧКОВ**\n\n"
+        text += "Выбери пользователя для перевода:\n\n"
+        text += "💡 Или введи Telegram ID вручную"
+
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+        context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_USER
+        return WAITING_PVP_TRANSFER_USER
+
+    except Exception as e:
+        logger.error(f"Ошибка в pvp_transfer: {e}")
+        await query.edit_message_text(f"❌ Ошибка: {e}")
+
+
+@owner_only
+async def owner_pvp_select_user_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает выбор пользователя из списка."""
+    query = update.callback_query
+    await query.answer()
+
+    user_id = int(query.data.split(":")[1])
+    context.user_data['pvp_target_user_id'] = user_id
+
+    await show_pvp_amount_menu(update, user_id)
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_AMOUNT
+    return WAITING_PVP_TRANSFER_AMOUNT
+
+
+@owner_only
+async def owner_pvp_manual_input_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает сообщение для ручного ввода Telegram ID."""
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = "⌨️ **ВВОД Telegram ID**\n\n"
+    text += "Введи Telegram ID или @username пользователя:"
+
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_USER
+    return WAITING_PVP_TRANSFER_USER
+
+
+@owner_only
+async def owner_pvp_transfer_user_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает ввод Telegram ID."""
+    if not update.message:
+        return ConversationHandler.END
+
+    user_input = update.message.text.strip()
+
+    try:
+        from database_postgres import get_user_info, get_user_by_username
+        user_id = None
+
+        if user_input.isdigit():
+            user_id = int(user_input)
+            user_info = get_user_info(user_id)
+            if not user_info:
+                await update.message.reply_text("❌ Пользователь не найден. Попробуй еще раз:")
+                return WAITING_PVP_TRANSFER_USER
+        else:
+            if user_input.startswith("@"):
+                user_input = user_input[1:]
+
+            user_info = get_user_by_username(user_input)
+            if not user_info:
+                await update.message.reply_text("❌ Пользователь не найден. Попробуй еще раз:")
+                return WAITING_PVP_TRANSFER_USER
+
+            user_id = user_info[0]
+
+        context.user_data['pvp_target_user_id'] = user_id
+        await show_pvp_amount_menu(update, user_id, message=True)
+
+        context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_AMOUNT
+        return WAITING_PVP_TRANSFER_AMOUNT
+
+    except Exception as e:
+        logger.error(f"Ошибка обработки ввода: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {e}")
+        return ConversationHandler.END
+
+
+async def show_pvp_amount_menu(update, user_id, message=False):
+    """Показывает меню выбора суммы PvP."""
+    from database_postgres import get_user_info, get_user_pvp_stats
+    user_info = get_user_info(user_id)
+
+    if not user_info:
+        text = "❌ Пользователь не найден"
+    else:
+        first_name = user_info[1] or "Пользователь"
+        username = user_info[3] or ""
+        # Показываем Имя + Никнейм (если есть)
+        if username:
+            display_user = f"{first_name} (@{username})"
+        else:
+            display_user = first_name
+
+        pvp_stats = get_user_pvp_stats(user_id)
+        current_pvp = pvp_stats.get('total_points', 0) if pvp_stats else 0
+
+        text = f"💎 **ПЕРЕВОД PvP ОЧКОВ**\n\n"
+        text += f"👤 Пользователь: {display_user}\n"
+        text += f"🎯 Текущие PvP: {current_pvp}\n\n"
+        text += "Выбери сумму для перевода:"
+
+    keyboard = [
+        [InlineKeyboardButton("10 PvP", callback_data="pvp_amount:10")],
+        [InlineKeyboardButton("50 PvP", callback_data="pvp_amount:50")],
+        [InlineKeyboardButton("100 PvP", callback_data="pvp_amount:100")],
+        [InlineKeyboardButton("200 PvP", callback_data="pvp_amount:200")],
+        [InlineKeyboardButton("500 PvP", callback_data="pvp_amount:500")],
+        [InlineKeyboardButton("1000 PvP", callback_data="pvp_amount:1000")],
+        [InlineKeyboardButton("⌨️ Своя сумма", callback_data="pvp_custom_amount")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if message:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+    else:
+        query = update.callback_query
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+
+@owner_only
+async def owner_pvp_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает выбор суммы."""
+    query = update.callback_query
+    await query.answer()
+
+    amount = int(query.data.split(":")[1])
+    context.user_data['pvp_amount'] = amount
+
+    await show_pvp_confirm(update, context)
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
+    return WAITING_PVP_TRANSFER_CONFIRM
+
+
+@owner_only
+async def owner_pvp_custom_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает сообщение для ввода своей суммы."""
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = "⌨️ **СВОЯ СУММА**\n\n"
+    text += "Введи количество PvP очков:"
+
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+
+@owner_only
+async def owner_pvp_transfer_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает ввод своей суммы."""
+    if not update.message:
+        return ConversationHandler.END
+
+    amount_input = update.message.text.strip()
+
+    try:
+        amount = int(amount_input)
+
+        if amount <= 0:
+            await update.message.reply_text("❌ Сумма должна быть положительной. Попробуй еще раз:")
+            return WAITING_PVP_TRANSFER_AMOUNT
+
+        context.user_data['pvp_amount'] = amount
+        await show_pvp_confirm(update, context, message=True)
+
+        context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
+        return WAITING_PVP_TRANSFER_CONFIRM
+
+    except ValueError:
+        await update.message.reply_text("❌ Введи число. Попробуй еще раз:")
+        return WAITING_PVP_TRANSFER_AMOUNT
+    except Exception as e:
+        logger.error(f"Ошибка ввода суммы: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {e}")
+        return ConversationHandler.END
+
+
+async def show_pvp_confirm(update, context, message=False):
+    """Показывает подтверждение перевода."""
+    user_id = context.user_data.get('pvp_target_user_id')
+    amount = context.user_data.get('pvp_amount', 0)
+
+    from database_postgres import get_user_info
+    user_info = get_user_info(user_id)
+
+    if user_info:
+        first_name = user_info[1] or "Пользователь"
+        username = user_info[3] or ""
+        # Показываем Имя + Никнейм (если есть)
+        if username:
+            display_user = f"{first_name} (@{username})"
+        else:
+            display_user = first_name
+
+        text = f"💎 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+        text += f"👤 Получатель: {display_user}\n"
+        text += f"🎯 Сумма: {amount} PvP очков\n\n"
+        text += "Подтвердишь перевод?"
+    else:
+        text = "❌ Ошибка получения данных пользователя"
+
+    keyboard = [
+        [InlineKeyboardButton("✅ Подтвердить", callback_data="owner_pvp_transfer_confirm_yes")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if message:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+    else:
+        query = update.callback_query
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+
+@owner_only
+async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Выполняет подтверждённый перевод."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        user_id = context.user_data.get('pvp_target_user_id')
+        amount = context.user_data.get('pvp_amount', 0)
+        admin_id = update.effective_user.id
+
+        from database_postgres import add_pvp_points_admin, get_user_info
+        success = add_pvp_points_admin(user_id, amount, "Админский перевод", admin_id)
+
+        if success:
+            user_info = get_user_info(user_id)
+
+            # Отправляем уведомление пользователю
+            notification_sent = False
+            notification_error = None
+
+            try:
+                from database_postgres import get_user_pvp_stats
+                bot = context.bot
+
+                # Получаем новый баланс PvP
+                pvp_stats = get_user_pvp_stats(user_id)
+                new_pvp_balance = pvp_stats.get('total_points', 0) if pvp_stats else 0
+
+                if user_info:
+                    first_name_user = user_info[1] or "Пользователь"
+                    notification_text = f"🎁 **ТЫ ПОЛУЧИЛ PvP ОЧКИ!**\n\n"
+                    notification_text += f"🎯 Ты получил: {amount} PvP очков\n"
+                    notification_text += f"💎 Твой баланс: {new_pvp_balance} PvP\n\n"
+                    notification_text += f"💡 Используй PvP для вызова на дуэли!"
+
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text=notification_text,
+                        parse_mode="Markdown"
+                    )
+                    notification_sent = True
+                    logger.info(f"📬 Уведомление о PvP отправлено пользователю {user_id}")
+            except Exception as e:
+                notification_error = str(e)
+                logger.warning(f"Не удалось отправить уведомление о PvP пользователю {user_id}: {e}")
+
+            # Показываем результат собственнику
+            if user_info:
+                first_name = user_info[1] or "Пользователь"
+                username = user_info[3] or ""
+                # Показываем Имя + Никнейм (если есть)
+                if username:
+                    display_user = f"{first_name} (@{username})"
+                else:
+                    display_user = first_name
+
+                text = f"✅ **ПЕРЕВОД ВЫПОЛНЕН**\n\n"
+                text += f"👤 {display_user}\n"
+                text += f"🎯 Начислено: {amount} PvP очков\n"
+
+                # Добавляем информацию об уведомлении
+                if notification_sent:
+                    text += "📬 Уведомление отправлено"
+                elif notification_error:
+                    text += "⚠️ Уведомление не отправлено\n"
+                    if "bot was blocked" in notification_error.lower():
+                        text += "Причина: Пользователь заблокировал бота"
+                    elif "user is deactivated" in notification_error.lower():
+                        text += "Причина: Пользователь деактивирован"
+                    elif "chat not found" in notification_error.lower():
+                        text += "Причина: Чат не найден"
+                    else:
+                        text += f"Ошибка: {notification_error[:80]}..."
+                else:
+                    text += "💡 Пользователь теперь может вызывать на дуэли!"
+            else:
+                text = f"✅ Начислено {amount} PvP очков"
+
+            keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        else:
+            await query.edit_message_text("❌ Ошибка выполнения перевода")
+
+    except Exception as e:
+        logger.error(f"Ошибка выполнения перевода PvP: {e}")
+        await query.edit_message_text(f"❌ Ошибка: {e}")
+
+    context.user_data.pop('pvp_target_user_id', None)
+    context.user_data.pop('pvp_amount', None)
+    context.user_data.pop('pvp_transfer_state', None)
+
+    return ConversationHandler.END
+
+
+@owner_only
+async def owner_pvp_transfer_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отменяет процесс перевода."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        context.user_data.pop('pvp_target_user_id', None)
+        context.user_data.pop('pvp_amount', None)
+        context.user_data.pop('pvp_transfer_state', None)
+
+        text = "❌ Перевод PvP очков отменен"
+
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(text, reply_markup=reply_markup)
+
+    except Exception as e:
+        logger.error(f"Ошибка отмены: {e}")
+
+    return ConversationHandler.END
+
+# -*- coding: utf-8 -*-
+"""
+Функции для управления каналами - добавь этот код в конец owner_handlers.py
+"""
+
+# ========== УПРАВЛЕНИЕ КАНАЛАМИ ==========
+
+
+@owner_only
+async def owner_channel_check_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает информацию о каналах и их статусе."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        text = "📢 **ПРОВЕРКА КАНАЛОВ**\n\n"
+        text += "Проверка подключения бота к каналам:\n\n"
+
+        keyboard = []
+
+        # Проверяем канал уведомлений из переменных окружения
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
+
+        if notification_channel:
+            try:
+                # Проверяем доступ бота к каналу
+                bot = context.bot
+                chat_member = await bot.get_chat_member(notification_channel, bot.id)
+
+                if chat_member:
+                    status_emoji = "✅"
+                    status_text = "Подключен"
+
+                    # Проверяем права бота
+                    can_post_messages = chat_member.can_post_messages if hasattr(chat_member, 'can_post_messages') else False
+
+                    text += f"📢 **Канал уведомлений:**\n"
+                    text += f"🆔 ID: `{notification_channel}`\n"
+                    text += f"📊 Статус: {status_emoji} {status_text}\n"
+                    text += f"📝 Права: {'✅ Может писать' if can_post_messages else '❌ Ограничены'}\n\n"
+
+                    keyboard.append([
+                        InlineKeyboardButton("🔄 Переподключить канал", callback_data=OWNER_CHANNEL_RECONNECT),
+                        InlineKeyboardButton("📝 Изменить ID канала", callback_data="owner_channel_change_id")
+                    ])
+
+            except Exception as e:
+                error_msg = str(e)
+                text += f"📢 **Канал уведомлений:**\n"
+                text += f"🆔 ID: `{notification_channel}`\n"
+                text += f"❌ Ошибка подключения: {error_msg[:50]}...\n\n"
+
+                keyboard.append([
+                    InlineKeyboardButton("🔄 Переподключить канал", callback_data=OWNER_CHANNEL_RECONNECT),
+                    InlineKeyboardButton("📝 Изменить ID канала", callback_data="owner_channel_change_id")
+                ])
+        else:
+            text += "📢 **Канал уведомлений:**\n"
+            text += "❌ Не настроен в переменных окружения\n\n"
+
+            keyboard.append([
+                InlineKeyboardButton("📝 Добавить канал", callback_data="owner_channel_change_id")
+            ])
+
+        keyboard.append([InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)])
+        keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data=OWNER_CHANNEL_CHECK)])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+    except Exception as e:
+        logger.error(f"Ошибка проверки каналов: {e}")
+        text = f"❌ Ошибка проверки каналов: {e}"
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        except:
+            pass
+
+
+@owner_only
+async def owner_channel_change_id_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает инструкции для изменения ID канала."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+
+        text = "📝 **ИЗМЕНЕНИЕ ID КАНАЛА**\n\n"
+        text += "📋 **Инструкция:**\n\n"
+        text += "1. **Добавь бота в канал** как администратора\n"
+        text += "2. **Узнай ID канала:**\n"
+        text += "   • Перешли @getmyid_bot сообщение из канала\n"
+        text += "   • Или forwarding: @channel_id_bot\n\n"
+        text += "3. **Введи ID канала** в формате:\n"
+        text += "   • `-100XXXXXXXXX` (для публичных/приватных)\n"
+        text += "   • `@channelname` (для публичных)\n\n"
+        text += "4. **Перезапусти бота** после изменения!\n\n"
+        text += "💡 **Где изменить:**\n"
+        text += "• В файле `.env`: `NOTIFICATION_CHANNEL_ID=-100XXXXXXXXX`\n"
+        text += "• Или в Render → Environment Variables\n\n"
+        text += "⚠️ После изменения ID перезапусти бота!"
+
+        keyboard = [
+            [InlineKeyboardButton("🔄 Проверить подключение", callback_data=OWNER_CHANNEL_CHECK)],
+            [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
+        ]
+
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+    except Exception as e:
+        logger.error(f"Ошибка отображения инструкций: {e}")
+
+
+@owner_only
+async def owner_channel_reconnect_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Переподключается к каналу и показывает подробную информацию."""
+    query = update.callback_query
+
+    try:
+        await query.answer("🔄 Переподключение...")
+
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
+
+        if not notification_channel:
+            text = "❌ **КАНАЛ НЕ НАСТРОЕН**\n\n"
+            text += "Канал уведомлений не указан в переменных окружения.\n\n"
+            text += "📝 **Добавь в .env:**\n"
+            text += "`NOTIFICATION_CHANNEL_ID=-100XXXXXXXXX`\n\n"
+            text += "Или введи новый ID:"
+        else:
+            try:
+                bot = context.bot
+
+                # Получаем информацию о канале
+                chat = await bot.get_chat(notification_channel)
+
+                text = "✅ **ПОДКЛЮЧЕНИЕ К КАНАЛУ**\n\n"
+
+                # Информация о канале
+                chat_title = chat.title if hasattr(chat, 'title') else "Канал"
+                chat_type = chat.type if hasattr(chat, 'type') else "unknown"
+
+                text += f"📢 **Название:** {chat_title}\n"
+                text += f"🆔 **ID:** `{notification_channel}`\n"
+                text += f"📋 **Тип:** {chat_type}\n\n"
+
+                # Проверяем права бота
+                try:
+                    chat_member = await bot.get_chat_member(notification_channel, bot.id)
+
+                    if chat_member:
+                        status = chat_member.status
+                        text += f"👤 **Статус бота:** {status}\n"
+
+                        # Проверяем различные права
+                        can_post_messages = chat_member.can_post_messages if hasattr(chat_member, 'can_post_messages') else False
+                        can_edit_messages = chat_member.can_edit_messages if hasattr(chat_member, 'can_edit_messages') else False
+                        can_delete_messages = chat_member.can_delete_messages if hasattr(chat_member, 'can_delete_messages') else False
+
+                        text += f"📝 **Писать сообщения:** {'✅ Да' if can_post_messages else '❌ Нет'}\n"
+                        text += f"✏️ **Редактировать:** {'✅ Да' if can_edit_messages else '❌ Нет'}\n"
+                        text += f"🗑️ **Удалять:** {'✅ Да' if can_delete_messages else '❌ Нет'}\n\n"
+
+                        if status == 'administrator':
+                            text += "✅ **Бот является администратором канала**\n\n"
+                        elif status == 'member':
+                            text += "⚠️ **Бот является участником канала**\n"
+                            text += "💡 **Рекомендация:** Сделай бота администратором для полной функциональности\n\n"
+                        else:
+                            text += f"⚠️ **Неопределенный статус: {status}**\n\n"
+
+                except Exception as e:
+                    text += f"❌ Не удалось проверить права: {str(e)[:50]}...\n\n"
+
+                # Пробуем отправить тестовое сообщение
+                try:
+                    test_msg = await bot.send_message(
+                        chat_id=notification_channel,
+                        text="🔄 Тестовое сообщение от администратора\n\n✅ Подключение к каналу работает!"
+                    )
+                    text += "📬 **Тестовое сообщение:** ✅ Отправлено успешно\n\n"
+                except Exception as e:
+                    error_msg = str(e)
+                    text += f"📬 **Тестовое сообщение:** ❌ Ошибка\n"
+                    text += f"Причина: {error_msg[:80]}...\n\n"
+
+                    if "bot was blocked" in error_msg.lower():
+                        text += "💡 **Решение:** Проверь, не заблокирован ли бот в канале\n\n"
+                    elif "not enough rights" in error_msg.lower():
+                        text += "💡 **Решение:** Выдай боту права администратора\n\n"
+                    elif "chat not found" in error_msg.lower():
+                        text += "💡 **Решение:** Проверь правильность ID канала\n\n"
+
+                text += "💡 **Если есть проблемы:**\n"
+                text += "1. Убедись, что бот добавлен в канал\n"
+                text += "2. Выдай боту права администратора\n"
+                text += "3. Проверь правильность ID канала"
+
+                keyboard = [
+                    [InlineKeyboardButton("🔄 Обновить", callback_data=OWNER_CHANNEL_RECONNECT)],
+                    [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
+                    [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
+                ]
+
+                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                return
+
+            except Exception as e:
+                text = f"❌ **ОШИБКА ПОДКЛЮЧЕНИЯ**\n\n"
+                text += f"Не удалось подключиться к каналу:\n"
+                text += f"`{notification_channel}`\n\n"
+                text += f"**Ошибка:** {str(e)[:100]}\n\n"
+
+                if "chat not found" in str(e).lower():
+                    text += "💡 **Возможные причины:**\n"
+                    text += "• Неверный ID канала\n"
+                    text += "• Бот не добавлен в канал\n"
+                    text += "• Канал не существует\n\n"
+                elif "bot was blocked" in str(e).lower():
+                    text += "💡 **Причина:** Бот заблокирован в канале\n\n"
+                elif "not enough rights" in str(e).lower():
+                    text += "💡 **Причина:** Недостаточно прав у бота\n\n"
+
+                text += "📝 **Попробуй:**\n"
+                text += "1. Изменить ID канала\n"
+                text += "2. Добавить бота в канал\n"
+                text += "3. Выдать права администратора"
+
+                keyboard = [
+                    [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
+                    [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
+                ]
+
+                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                return
+
+    except Exception as e:
+        logger.error(f"Ошибка переподключения: {e}")
+        text = f"❌ Ошибка: {e}"
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        except:
+            pass

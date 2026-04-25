@@ -32,11 +32,18 @@ from owner_handlers import (
     owner_ff_transfer_confirm_callback, owner_ff_transfer_cancel_callback,
     owner_pvp_settings_callback, owner_pvp_exercise_callback, owner_pvp_complex_callback, owner_pvp_challenge_callback,
     owner_pvp_set_percent_callback, owner_pvp_custom_percent_callback, owner_pvp_custom_input,
+    owner_pvp_transfer_callback, owner_pvp_select_user_callback, owner_pvp_manual_input_callback,
+    owner_pvp_transfer_user_input, owner_pvp_transfer_amount_input, owner_pvp_amount_callback, owner_pvp_custom_amount_callback,
+    owner_pvp_transfer_confirm_callback, owner_pvp_transfer_cancel_callback,
+    owner_channel_check_callback, owner_channel_change_id_callback, owner_channel_reconnect_callback,
     WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM, WAITING_PVP_CUSTOM_INPUT,
+    WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CONFIRM,
     OWNER_MENU, OWNER_STATS, OWNER_BALANCES, OWNER_CHAMPIONS, OWNER_CHAMPIONS_HISTORY, OWNER_CHAMPIONS_MENU, OWNER_CHAMPIONS_CALCULATE, OWNER_CHAMPIONS_CALCULATE_CURRENT, OWNER_CHAMPIONS_CONFIRM,
     OWNER_COMPETITIONS, OWNER_COMPETITIONS_TOGGLE, OWNER_COMPETITIONS_ENABLE_ALL, OWNER_COMPETITIONS_DISABLE_ALL, OWNER_COMPETITIONS_ENABLE_BEGINNERS,
     OWNER_FF_INFO, OWNER_FF_TRANSFER, OWNER_FF_TRANSFER_CANCEL, OWNER_FF_TRANSFER_CONFIRM_YES,
-    OWNER_PVP_SETTINGS, OWNER_PVP_EXERCISE, OWNER_PVP_COMPLEX, OWNER_PVP_CHALLENGE
+    OWNER_PVP_SETTINGS, OWNER_PVP_EXERCISE, OWNER_PVP_COMPLEX, OWNER_PVP_CHALLENGE,
+    OWNER_PVP_TRANSFER, OWNER_PVP_TRANSFER_CANCEL, OWNER_PVP_TRANSFER_CONFIRM_YES,
+    OWNER_CHANNEL_CHECK, OWNER_CHANNEL_RECONNECT
 )
 
 # Импорты модулей
@@ -93,7 +100,8 @@ from ai_handlers import (
 from calendar_handlers import (
     calendar_menu,
     calendar_navigation,
-    CALENDAR, CALENDAR_PREV, CALENDAR_NEXT, CALENDAR_BACK
+    calendar_day_click,
+    CALENDAR, CALENDAR_PREV, CALENDAR_NEXT, CALENDAR_BACK, CALENDAR_DAY
 )
 
 # Загрузка переменных окружения
@@ -678,6 +686,15 @@ async def handle_callback_query(update: Update, context) -> None:
         elif callback_data == OWNER_PVP_CHALLENGE:
             # Настройка конвертации челленджей
             await owner_pvp_challenge_callback(update, context)
+        elif callback_data == OWNER_CHANNEL_CHECK:
+            # Проверка каналов
+            await owner_channel_check_callback(update, context)
+        elif callback_data == OWNER_CHANNEL_RECONNECT:
+            # Переподключение к каналу
+            await owner_channel_reconnect_callback(update, context)
+        elif callback_data == "owner_channel_change_id":
+            # Изменение ID канала
+            await owner_channel_change_id_callback(update, context)
         elif callback_data.startswith(("pvp_exercise_set:", "pvp_complex_set:", "pvp_challenge_set:")):
             # Установка выбранного процента
             await owner_pvp_set_percent_callback(update, context)
@@ -757,8 +774,17 @@ async def handle_callback_query(update: Update, context) -> None:
 def main() -> None:
     """Главная функция для запуска бота"""
     # Инициализируем базу данных
-    from database_postgres import init_db
+    from database_postgres import init_db, init_connection_pool
+    from cache_manager import start_cache_cleanup
+
     init_db()
+
+    # Инициализируем connection pool для ускорения
+    init_connection_pool(minconn=3, maxconn=20)
+
+    # Запускаем автоматическую очистку кэша
+    start_cache_cleanup(interval=300)  # Каждые 5 минут
+    logger.info("✅ Кэширование и connection pool запущены")
 
     # Создаём приложение (JobQueue не поддерживается в этой версии)
     application = Application.builder().token(BOT_TOKEN).build()
@@ -817,6 +843,33 @@ def main() -> None:
     # Регистрируем ConversationHandler для перевода FF
     application.add_handler(owner_ff_transfer_conversation)
 
+    # Создаём ConversationHandler для перевода PvP
+    owner_pvp_transfer_conversation = ConversationHandler(
+        entry_points=[CallbackQueryHandler(owner_pvp_transfer_callback, pattern=f'^{OWNER_PVP_TRANSFER}$')],
+        states={
+            WAITING_PVP_TRANSFER_USER: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_pvp_transfer_user_input),
+                CallbackQueryHandler(owner_pvp_select_user_callback, pattern=r'^pvp_select_user:\d+$'),
+                CallbackQueryHandler(owner_pvp_manual_input_callback, pattern='^pvp_manual_input$'),
+                CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')
+            ],
+            WAITING_PVP_TRANSFER_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_pvp_transfer_amount_input),
+                CallbackQueryHandler(owner_pvp_amount_callback, pattern=r'^pvp_amount:\d+$'),
+                CallbackQueryHandler(owner_pvp_custom_amount_callback, pattern='^pvp_custom_amount$'),
+                CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')
+            ],
+            WAITING_PVP_TRANSFER_CONFIRM: [
+                CallbackQueryHandler(owner_pvp_transfer_confirm_callback, pattern=f'^{OWNER_PVP_TRANSFER_CONFIRM_YES}$'),
+                CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')
+            ],
+        },
+        fallbacks=[CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')],
+    )
+
+    # Регистрируем ConversationHandler для перевода PvP
+    application.add_handler(owner_pvp_transfer_conversation)
+
     # Создаём ConversationHandler для ввода своего процента PvP
     from owner_handlers import WAITING_PVP_CUSTOM_INPUT
     owner_pvp_custom_conversation = ConversationHandler(
@@ -853,6 +906,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_PREV}$'))
     application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_NEXT}$'))
     application.add_handler(CallbackQueryHandler(calendar_navigation, pattern=f'^{CALENDAR_BACK}$'))
+    application.add_handler(CallbackQueryHandler(calendar_day_click, pattern=f'^{CALENDAR_DAY}_'))
 
     # Регистрируем обработчик для поискового ввода (должен быть последним)
     application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL, handle_complex_media))
