@@ -491,7 +491,14 @@ async def upload_exercise_proof(update: Update, context: ContextTypes.DEFAULT_TY
 async def cancel_challenge_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отмена выполнения упражнения."""
     context.user_data.clear()
-    await update.message.reply_text("❌ Выполнение отменено")
+
+    # Проверяем, есть ли callback_query (inline кнопка) или message (команда)
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text("❌ Выполнение отменено")
+    elif update.message:
+        await update.message.reply_text("❌ Выполнение отменено")
+
     return ConversationHandler.END
 
 

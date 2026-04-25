@@ -321,9 +321,9 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
                 base_points = exercise_info[4]  # points field
                 pvp_points = add_pvp_points_from_workout(user_id, base_points, 'exercise')
                 if pvp_points > 0:
-                    print(f"DEBUG: Начислено {pvp_points} PvP очков за упражнение")
+                    print(f"DEBUG: Начислено {pvp_points} PvP Рейтинга за упражнение")
         except Exception as pvp_error:
-            logger.error(f"Ошибка начисления PvP очков: {pvp_error}")
+            logger.error(f"Ошибка начисления PvP Рейтинга: {pvp_error}")
 
         success = True
 
@@ -375,7 +375,14 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
 async def cancel_workout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отмена выполнения упражнения."""
     context.user_data.clear()
-    await update.message.reply_text("❌ Выполнение отменено")
+
+    # Проверяем, есть ли callback_query (inline кнопка) или message (команда)
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text("❌ Выполнение отменено")
+    elif update.message:
+        await update.message.reply_text("❌ Выполнение отменено")
+
     return ConversationHandler.END
 
 # ==================== ЧЕЛЛЕНДЖИ ====================

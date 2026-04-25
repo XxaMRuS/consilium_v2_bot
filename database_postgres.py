@@ -428,6 +428,13 @@ def init_db():
             ("10 тренировок", "Выполни 10 тренировок", "workout_count", "10", "🏆"),
             ("Рекордсмен", "Установи новый личный рекорд в любом упражнении", "best_record", "1", "⭐"),
             ("Победитель челленджа", "Заверши любой челлендж", "challenge_completed", "1", "🎯"),
+            # FruNStatus ачивки
+            ("🥉 Бронзовый ранг", "Достигни 100 FruNStatus", "funstatus", "100", "🥉"),
+            ("🥈 Серебряный ранг", "Достигни 200 FruNStatus", "funstatus", "200", "🥈"),
+            ("🥇 Золотой ранг", "Достигни 300 FruNStatus", "funstatus", "300", "🥇"),
+            ("💎 Платиновый ранг", "Достигни 400 FruNStatus", "funstatus", "400", "💎"),
+            ("👑 Алмазный ранг", "Достигни 500 FruNStatus", "funstatus", "500", "👑"),
+            ("🏆 Легендарный ранг", "Достигни 600 FruNStatus", "funstatus", "600", "🏆"),
         ]
         cur.executemany("""
             INSERT INTO achievements (name, description, condition_type, condition_value, icon)
@@ -677,7 +684,14 @@ def set_user_level(user_id, new_level):
 
 
 def get_user_info(user_id):
-    """Возвращает полную информацию о пользователе."""
+    """Возвращает полную информацию о пользователе с кэшированием."""
+    # Проверяем кэш сначала
+    from cache_manager import DataCache
+    cached = DataCache.get_user_info(user_id)
+    if cached is not None:
+        return cached
+
+    # Если нет в кэше, запрашиваем из БД
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -689,6 +703,10 @@ def get_user_info(user_id):
 
     row = cur.fetchone()
     conn.close()
+
+    # Сохраняем в кэш
+    if row:
+        DataCache.set_user_info(user_id, row, ttl=60)  # Кэшируем на 1 минуту
 
     return row
 
@@ -713,6 +731,24 @@ def get_user_by_username(username):
     conn.close()
 
     return row
+
+
+def get_all_users(limit=100):
+    """Возвращает список всех пользователей."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT telegram_id, first_name, last_name, username
+        FROM users
+        ORDER BY first_name
+        LIMIT %s
+    """, (limit,))
+
+    rows = cur.fetchall()
+    release_db_connection(conn)
+
+    return rows
 
 
 def get_user_group(user_id):
@@ -1029,6 +1065,11 @@ def add_workout(user_id, exercise_id=None, complex_id=None, result_value="", vid
     if metric is not None and exercise_id is not None:
         update_personal_best(user_id, exercise_id, result_value, metric, conn, notify_record_callback)
     conn.close()
+
+    # Инвалидируем кэш пользователя (изменились очки и достижения)
+    from cache_manager import DataCache
+    DataCache.invalidate_user(user_id)
+
     return workout_id, new_achievements
 
 
@@ -1136,12 +1177,34 @@ def get_user_stats(user_id, period=None, level=None):
 
 
 def get_user_scoreboard_total(user_id):
-    """Возвращает общее количество баллов пользователя из scoreboard."""
+    """Возвращает общее количество баллов пользователя из scoreboard + админские бонусы."""
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # Получаем очки из scoreboard
     cur.execute("SELECT COALESCE(SUM(points), 0) FROM scoreboard WHERE user_id = %s", (user_id,))
-    total = cur.fetchone()[0]
-    conn.close()
+    scoreboard_points = cur.fetchone()[0] or 0
+
+    # Получаем админские бонусы
+    admin_bonus_points = 0
+    try:
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'pvp_admin_bonuses'
+            )
+        """)
+        table_exists = cur.fetchone()[0]
+
+        if table_exists:
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM pvp_admin_bonuses WHERE user_id = %s", (user_id,))
+            admin_bonus_points = cur.fetchone()[0] or 0
+    except Exception as e:
+        logger.warning(f"Не удалось получить админские бонусы: {e}")
+        admin_bonus_points = 0
+
+    total = scoreboard_points + admin_bonus_points
+    release_db_connection(conn)
     return total
 
 
@@ -1202,12 +1265,23 @@ def get_exercises(active_only=True, week=None, difficulty=None):
 
 
 def get_all_exercises():
-    """Возвращает все упражнения."""
+    """Возвращает все упражнения с кэшированием."""
+    # Проверяем кэш сначала
+    from cache_manager import DataCache
+    cached = DataCache.get_exercises()
+    if cached is not None:
+        return cached
+
+    # Если нет в кэше, запрашиваем из БД
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT id, name, metric, points, week, difficulty FROM exercises ORDER BY name")
     exercises = cur.fetchall()
     conn.close()
+
+    # Сохраняем в кэш на 10 минут
+    DataCache.set_exercises(exercises, ttl=600)
+
     return exercises
 
 
@@ -1314,6 +1388,11 @@ def update_exercise(exercise_id, name=None, description=None, metric=None, point
         raise e
     finally:
         conn.close()
+
+    # Инвалидируем кэш упражнений если они были обновлены
+    if updated:
+        from cache_manager import DataCache
+        DataCache.invalidate_exercises()
 
     return updated
 
@@ -1600,7 +1679,14 @@ def get_challenges_by_status(status='active'):
 
 
 def get_all_challenges():
-    """Возвращает все челленджи."""
+    """Возвращает все челленджи с кэшированием."""
+    # Проверяем кэш сначала
+    from cache_manager import DataCache
+    cached = DataCache.get_challenges()
+    if cached is not None:
+        return cached
+
+    # Если нет в кэше, запрашиваем из БД
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -1616,6 +1702,10 @@ def get_all_challenges():
     """)
     rows = cur.fetchall()
     release_db_connection(conn)
+
+    # Сохраняем в кэш на 10 минут
+    DataCache.set_challenges(rows, ttl=600)
+
     return rows
 
 
@@ -2185,6 +2275,12 @@ def check_and_award_achievements(user_id, conn=None):
             cur.execute("SELECT 1 FROM user_challenges WHERE user_id = %s AND completed = TRUE LIMIT 1", (user_id,))
             if cur.fetchone():
                 new_achievements.append(ach)
+        elif cond_type == 'funstatus':
+            # Проверяем FruNStatus
+            from database_postgres import get_user_scoreboard_total
+            funstatus = get_user_scoreboard_total(user_id) or 0
+            if funstatus >= int(cond_value):
+                new_achievements.append(ach)
     for ach in new_achievements:
         ach_id, name, desc, cond_type, cond_value, icon = ach
         cur.execute("INSERT INTO user_achievements (user_id, achievement_id) VALUES (%s, %s)", (user_id, ach_id))
@@ -2200,28 +2296,38 @@ def get_user_activity_calendar(user_id, year, month):
     """Возвращает данные для календаря активности пользователя."""
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Используем CASE для фильтрации только числовых значений
+    # Регулярное выражение проверяет, что значение состоит только из цифр и точки
     cursor.execute("""
         SELECT
             DATE(date) as day,
             COUNT(*) as workout_count,
             0 as record_count,
-            SUM(CAST(result_value AS NUMERIC)) as total_volume
+            SUM(CASE
+                WHEN result_value ~ '^[0-9]+[.]?[0-9]*$' THEN CAST(result_value AS NUMERIC)
+                ELSE 0
+            END) as total_volume
         FROM workouts
         WHERE user_id = %s
           AND EXTRACT(YEAR FROM date) = %s
           AND EXTRACT(MONTH FROM date) = %s
         GROUP BY DATE(date)
     """, (user_id, year, month))
+
     rows = cursor.fetchall()
     conn.close()
+
     days_in_month = calendar.monthrange(year, month)[1]
     result = []
+
     for day in range(1, days_in_month + 1):
         day_str = f"{year}-{month:02d}-{day:02d}"
         found = False
         has_workout = False
         has_record = False
         total_volume = None
+
         for row in rows:
             if row[0] == day_str:
                 found = True
@@ -2229,11 +2335,19 @@ def get_user_activity_calendar(user_id, year, month):
                 has_record = row[2] > 0
                 total_volume = float(row[3]) if row[3] else 0
                 break
+
         if not found:
             has_workout = False
             has_record = False
             total_volume = None
-        result.append((day, has_workout, has_record, total_volume))
+
+        result.append({
+            'day': datetime(year, month, day),
+            'workout_count': 1 if has_workout else 0,
+            'record_count': 1 if has_record else 0,
+            'total_volume': total_volume or 0
+        })
+
     return result
 
 
@@ -2728,9 +2842,33 @@ def get_user_pvp_history(user_id, limit=5):
 
 
 def get_user_pvp_stats(user_id):
-    """Возвращает PvP-статистику пользователя из pvp_history."""
+    """Возвращает PvP-статистику пользователя."""
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # Получаем общее количество PvP очков из scoreboard
+    cur.execute("SELECT COALESCE(SUM(points), 0) FROM scoreboard WHERE user_id = %s", (user_id,))
+    scoreboard_points = cur.fetchone()[0] or 0
+
+    # Проверяем существование таблицы pvp_admin_bonuses
+    admin_bonus_points = 0
+    try:
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'pvp_admin_bonuses'
+            )
+        """)
+        table_exists = cur.fetchone()[0]
+
+        if table_exists:
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM pvp_admin_bonuses WHERE user_id = %s", (user_id,))
+            admin_bonus_points = cur.fetchone()[0] or 0
+    except Exception as e:
+        logger.warning(f"Не удалось получить админские бонусы: {e}")
+        admin_bonus_points = 0
+
+    total_points = scoreboard_points + admin_bonus_points
 
     # Получаем статистику из pvp_history
     cur.execute("""
@@ -2746,26 +2884,32 @@ def get_user_pvp_stats(user_id):
     """, (user_id,))
 
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
+
+    result = {
+        'total_points': total_points
+    }
 
     if row and row[0] > 0:
-        return {
+        result.update({
             'total': row[0],
             'wins': row[1] or 0,
             'losses': row[2] or 0,
             'draws': row[3] or 0,
             'coins_won': row[4] or 0,
             'coins_lost': row[5] or 0
-        }
+        })
     else:
-        return {
+        result.update({
             'total': 0,
             'wins': 0,
             'losses': 0,
             'draws': 0,
             'coins_won': 0,
             'coins_lost': 0
-        }
+        })
+
+    return result
 
 
 def check_active_challenge_between(user_id_1, user_id_2):
@@ -4402,9 +4546,9 @@ def add_fun_fuel(user_id, amount, description=""):
 
             # Записываем транзакцию
             cur.execute("""
-                INSERT INTO coin_transactions (user_id, amount, transaction_type, description)
-                VALUES (%s, %s, 'fun_fuel', %s)
-            """, (user_id, amount, description))
+                INSERT INTO coin_transactions (user_id, amount, transaction_type, balance_after, description)
+                VALUES (%s, %s, 'fun_fuel', %s, %s)
+            """, (user_id, amount, new_balance, description))
 
             conn.commit()
             logger.info(f"Начислено {amount} FF пользователю {user_id}. Новый баланс: {new_balance}")
@@ -4450,9 +4594,9 @@ def reserve_fun_fuel(user_id, amount):
 
         # Записываем транзакцию
         cur.execute("""
-            INSERT INTO coin_transactions (user_id, amount, transaction_type, description)
-            VALUES (%s, %s, 'ff_reserve', %s)
-        """, (user_id, -amount, f"Резерв ставки: {amount} FF"))
+            INSERT INTO coin_transactions (user_id, amount, transaction_type, balance_after, description)
+            VALUES (%s, %s, 'ff_reserve', %s, %s)
+        """, (user_id, -amount, new_balance, f"Резерв ставки: {amount} FF"))
 
         conn.commit()
         logger.info(f"Зарезервировано {amount} FF пользователю {user_id}. Новый баланс: {new_balance}")
@@ -4624,7 +4768,7 @@ def get_all_pvp_settings():
 
 def add_pvp_points_from_workout(user_id, base_points, workout_type='exercise'):
     """
-    Начисляет PvP очки на основе настроек конвертации
+    Начисляет PvP Рейтинг на основе настроек конвертации
     workout_type: 'exercise', 'complex', 'challenge'
     """
     # Определяем какой процент использовать
@@ -4652,6 +4796,97 @@ def add_pvp_points_from_workout(user_id, base_points, workout_type='exercise'):
             VALUES (%s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, %s)
         """, (user_id, -workout_type[:10], pvp_points))
         conn.commit()
-        conn.close()
+
+        # Проверяем ачивки за FruNStatus
+        try:
+            check_and_award_achievements(user_id, conn)
+        except Exception as e:
+            logger.warning(f"Не удалось проверить ачивки: {e}")
+
+        release_db_connection(conn)
 
     return pvp_points
+
+
+def add_pvp_points_admin(user_id, amount, description=None, admin_id=None):
+    """
+    Админская функция для начисления/списания PvP Рейтинга пользователю
+    Аналогично add_coins для FF
+
+    Args:
+        user_id: ID пользователя
+        amount: Количество PvP Рейтинга (может быть отрицательным для списания)
+        description: Описание операции
+        admin_id: ID администратора (для логов)
+
+    Returns:
+        bool: True если успешно, False в противном случае
+    """
+    if amount == 0:
+        return False
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Проверяем существование пользователя
+        cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (user_id,))
+        if not cur.fetchone():
+            logger.error(f"Пользователь {user_id} не найден")
+            return False
+
+        # Проверяем и создаём таблицу для админских бонусов, если нужно
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'pvp_admin_bonuses'
+            )
+        """)
+        table_exists = cur.fetchone()[0]
+
+        if not table_exists:
+            # Создаём таблицу для админских бонусов
+            cur.execute("""
+                CREATE TABLE pvp_admin_bonuses (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    amount INTEGER NOT NULL,
+                    description TEXT,
+                    admin_id BIGINT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(telegram_id)
+                )
+            """)
+            logger.info("✅ Создана таблица 'pvp_admin_bonuses' для админских бонусов")
+
+        # Добавляем запись о бонусе
+        cur.execute("""
+            INSERT INTO pvp_admin_bonuses (user_id, amount, description, admin_id)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, amount, description, admin_id))
+
+        # Логируем операцию
+        admin_info = f" (админ {admin_id})" if admin_id else ""
+        operation_type = "начислено" if amount > 0 else "списано"
+        logger.info(f"Админ{admin_info}: {operation_type} {abs(amount)} PvP Рейтинга пользователю {user_id}. {description or ''}")
+
+        conn.commit()
+
+        # Проверяем ачивки за FruNStatus
+        try:
+            check_and_award_achievements(user_id, conn)
+        except Exception as e:
+            logger.warning(f"Не удалось проверить ачивки: {e}")
+
+        # Инвалидируем кэш пользователя
+        from cache_manager import DataCache
+        DataCache.invalidate_user(user_id)
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Ошибка админского начисления PvP: {e}")
+        conn.rollback()
+        return False
+    finally:
+        release_db_connection(conn)

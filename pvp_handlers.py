@@ -148,10 +148,12 @@ async def pvp_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚔️ **PvP - ДУЭЛИ**\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"👤 **Игрок:** {user_first_name}\n"
-        f"💰 **Очки:** {user_score}\n"
+        f"🏆 **FruNStatus:** {user_score}\n"
         f"{group_emoji} **Лига:** {group_name}\n"
         f"🔥 **Активных дуэлей:** {active_count}\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💡 FruNStatus = твой ранг (каждые 100 = медаль!)\n"
+        f"   Чем выше статус - тем выше ставка!\n\n"
         f"Выберите действие:"
     )
 
@@ -269,10 +271,11 @@ async def pvp_select_bet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 **ВЫЗОВ НА ДУЭЛЬ**\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"👤 **Соперник:** {opponent_name} ({username_display})\n\n"
-        f"💰 **СТАВКА:** Ваш выбор\n\n"
+        f"💰 **СТАВКА FFCoin:** Ваш выбор\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"📊 **Ваш баланс:** {challenger_score} 💰\n"
-        f"📊 **Баланс соперника:** {opponent_score} 💰\n\n"
+        f"🏆 **Ваш FruNStatus:** {challenger_score}\n"
+        f"🏆 **FruNStatus соперника:** {opponent_score}\n\n"
+        f"💡 FruNStatus определяет макс. ставку\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Выберите ставку:"
     )
@@ -481,9 +484,6 @@ async def pvp_accept_challenge(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Обновляем сообщение создателя вызова
     if challenge_id in pending_challenger_messages:
-        import asyncio
-        await asyncio.sleep(3)  # Пауза для эффекта
-
         opponent_info = get_user_info(opponent_id)
         opponent_username = opponent_info[3] if opponent_info else ""
         opponent_name_display = f"@{opponent_username}" if opponent_username else "Ваш соперник"
@@ -547,9 +547,6 @@ async def pvp_reject_challenge(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Обновляем сообщение создателя вызова
     if challenge_id in pending_challenger_messages:
-        import asyncio
-        await asyncio.sleep(3)  # Пауза для эффекта
-
         opponent_info = get_user_info(opponent_id)
         opponent_username = opponent_info[3] if opponent_info else ""
         opponent_name_display = f"@{opponent_username}" if opponent_username else "Ваш соперник"

@@ -118,7 +118,7 @@ async def owner_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         ],
         [
             InlineKeyboardButton("💸 Перевести FF", callback_data=OWNER_FF_TRANSFER),
-            InlineKeyboardButton("💎 Перевести PvP", callback_data=OWNER_PVP_TRANSFER),
+            InlineKeyboardButton("🏆 Перевести FruNStatus", callback_data=OWNER_PVP_TRANSFER),
         ],
         [
             InlineKeyboardButton("📢 Каналы", callback_data=OWNER_CHANNEL_CHECK),
@@ -163,7 +163,7 @@ async def owner_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         text = "📊 **СТАТИСТИКА БОТА**\n\n"
         text += f"👤 Пользователей: {total_users}\n"
         text += f"⚡ Соревнований: {active_competitions}\n"
-        text += f"💰 Всего FF в системе: {total_ff}\n"
+        text += f"💰 Всего FFCoin в системе: {total_ff}\n"
         text += f"💪 Тренировок выполнено: {total_workouts}\n"
 
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
@@ -203,10 +203,10 @@ async def owner_balances_callback(update: Update, context: ContextTypes.DEFAULT_
         users = cur.fetchall()
 
         if not users:
-            text = "💰 **БАЛАНСЫ FF**\n\n"
+            text = "💰 **БАЛАНСЫ FFCoin**\n\n"
             text += "Пока нет данных"
         else:
-            text = "💰 **БАЛАНСЫ FF (ТОП-20)**\n\n"
+            text = "💰 **БАЛАНСЫ FFCoin (ТОП-20)**\n\n"
             text += "💡 Нажми на кнопку чтобы скопировать ID\n\n"
 
             # Создаём список с кнопками для каждого пользователя
@@ -218,7 +218,7 @@ async def owner_balances_callback(update: Update, context: ContextTypes.DEFAULT_
                 # Экранируем спецсимволы
                 safe_first_name = escape_markdown(first_name)
                 safe_username = escape_markdown(username_str)
-                text += f"💎 {safe_first_name} {safe_username}: {balance} FF\n"
+                text += f"💎 {safe_first_name} {safe_username}: {balance} FFCoin\n"
 
                 # Добавляем кнопку с ID
                 button_text = f"📋 {telegram_id}"
@@ -774,18 +774,18 @@ async def owner_ff_info_callback(update: Update, context: ContextTypes.DEFAULT_T
         text = "💸 **УПРАВЛЕНИЕ FRUN FUEL**\n\n"
 
         text += "📊 **Статистика системы:**\n"
-        text += f"💰 Всего FF в системе: {total_ff}\n"
-        text += f"👤 Пользователей с FF: {users_with_ff}\n\n"
+        text += f"💰 Всего FFCoin в системе: {total_ff}\n"
+        text += f"👤 Пользователей с FFCoin: {users_with_ff}\n\n"
 
-        text += "💡 **Как управлять FF:**\n\n"
-        text += "📝 **Для перевода FF пользователю:**\n"
+        text += "💡 **Как управлять FFCoin:**\n\n"
+        text += "📝 **Для перевода FFCoin пользователю:**\n"
         text += "Используйте скрипт manage_ff.py\n"
         text += "Команда: python manage_ff.py add ID СУММА\n\n"
 
         text += "⚠️ **Важно:**\n"
-        text += "• FF используется для PvP ставок (10% комиссия)\n"
+        text += "• FFCoin используется для PvP ставок (10% комиссия)\n"
         text += "• Победитель получает 90% от банка\n"
-        text += "• FF также начисляется за достижения\n\n"
+        text += "• FFCoin также начисляется за достижения\n\n"
 
         text += "🔧 **Доступные команды:**\n"
         text += "• python manage_ff.py list - все пользователи\n"
@@ -834,7 +834,7 @@ async def owner_ff_transfer_callback(update: Update, context: ContextTypes.DEFAU
 
         users = cur.fetchall()
 
-        text = "💸 **ПЕРЕВОД FF**\n\n"
+        text = "💸 **ПЕРЕВОД FFCoin**\n\n"
         text += "📝 Выберите пользователя из списка или введите ID/username вручную"
 
         keyboard = []
@@ -843,7 +843,7 @@ async def owner_ff_transfer_callback(update: Update, context: ContextTypes.DEFAU
         for user in users:
             telegram_id, first_name, username, ff_balance = user
             username_part = f" @{username}" if username else ""
-            ff_part = f" ({ff_balance}FF)" if ff_balance else ""
+            ff_part = f" ({ff_balance} FFCoin)" if ff_balance else ""
 
             # Обрезаем длинные имена
             display_name = escape_markdown(first_name[:15])
@@ -945,7 +945,7 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
         text = f"💸 **ПЕРЕВОД FF**\n\n"
         text += f"👤 {safe_first_name} {safe_username}\n"
         text += f"🆔 ID: {telegram_id}\n"
-        text += f"💰 Текущий баланс: {current_ff} FF\n\n"
+        text += f"💰 Текущий баланс: {current_ff} FFCoin\n\n"
         text += "📝 Выберите сумму:"
 
         # Быстрые суммы
@@ -1076,7 +1076,7 @@ async def owner_ff_transfer_user_input(update: Update, context: ContextTypes.DEF
         text = f"💸 **ПЕРЕВОД FF**\n\n"
         text += f"👤 Пользователь: {safe_first_name} {safe_username}\n"
         text += f"🆔 ID: {telegram_id}\n"
-        text += f"💰 Текущий баланс: {current_ff} FF\n\n"
+        text += f"💰 Текущий баланс: {current_ff} FFCoin\n\n"
         text += "📝 Введите сумму для перевода:"
 
         keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=OWNER_FF_TRANSFER_CANCEL)]]
@@ -1302,17 +1302,16 @@ async def owner_ff_transfer_confirm_callback(update: Update, context: ContextTyp
         try:
             from telegram import Bot
             bot = context.bot
-            notification_text = f"🎁 **ТЫ ПОЛУЧИЛ FF!**\n\n"
-            notification_text += f"💰 Ты получил: {amount} FF\n"
-            notification_text += f"📊 Твой баланс: {new_balance} FF\n\n"
-            notification_text += f"💡 Используй FF для PvP ставок и покупок!"
+            notification_text = f"🎁 ТЫ ПОЛУЧИЛ FFCoin!\n\n"
+            notification_text += f"💰 Ты получил: {amount} FFCoin\n"
+            notification_text += f"📊 Твой баланс: {new_balance} FFCoin\n\n"
+            notification_text += f"💡 Используй FFCoin для PvP ставок!"
 
             logger.info(f"📤 Попытка отправить уведомление о FF пользователю {target_user['telegram_id']}...")
 
             await bot.send_message(
                 chat_id=target_user['telegram_id'],
-                text=notification_text,
-                parse_mode="Markdown"
+                text=notification_text
             )
             notification_sent = True
             logger.info(f"✅ Уведомление об FF успешно отправлено пользователю {target_user['telegram_id']}")
@@ -1321,13 +1320,12 @@ async def owner_ff_transfer_confirm_callback(update: Update, context: ContextTyp
             logger.error(f"❌ Ошибка отправки уведомления об FF пользователю {target_user['telegram_id']}: {e}")
             logger.error(f"Тип ошибки: {type(e).__name__}")
 
-        safe_first_name = escape_markdown(target_user['first_name'])
+        # Формируем имя получателя
         username_str = f"@{target_user['username']}" if target_user['username'] else "(нет username)"
-        safe_username = escape_markdown(username_str)
 
-        text = "✅ **ПЕРЕВОД ВЫПОЛНЕН!**\n\n"
-        text += f"👤 Получатель: {safe_first_name} {safe_username}\n"
-        text += f"💰 Переведено: {amount} FF\n"
+        text = "✅ ПЕРЕВОД ВЫПОЛНЕН!\n\n"
+        text += f"👤 Получатель: {target_user['first_name']} {username_str}\n"
+        text += f"💰 Переведено: {amount} FFCoin\n"
         text += f"📊 Новый баланс: {new_balance} FF\n\n"
 
         # Добавляем информацию об уведомлении
@@ -1352,18 +1350,18 @@ async def owner_ff_transfer_confirm_callback(update: Update, context: ContextTyp
         ]
 
         try:
-            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         except Exception as e:
             if "not modified" not in str(e):
                 logger.error(f"Ошибка отображения: {e}")
                 raise
 
-        # Лируем перевод
-        logger.info(f"💸 FF TRANSFER: {amount} FF -> {target_user['telegram_id']} ({safe_first_name})")
+        # Логируем перевод
+        logger.info(f"💸 FF TRANSFER: {amount} FF -> {target_user['telegram_id']} ({target_user['first_name']})")
 
     except Exception as e:
         logger.error(f"Ошибка перевода FF: {e}")
-        text = f"❌ **ОШИБКА ПЕРЕВОДА**\n\n"
+        text = f"❌ ОШИБКА ПЕРЕВОДА\n\n"
         text += f"Произошла ошибка: {str(e)}"
 
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
@@ -1626,14 +1624,14 @@ async def owner_pvp_settings_callback(update: Update, context: ContextTypes.DEFA
     challenge_percent = settings.get('challenge_pvp_percent', 20)
 
     text = "⚔️ **НАСТРОЙКИ PvP КОНВЕРТАЦИИ**\n\n"
-    text += "💡 Процент очков, конвертируемых в PvP очки:\n\n"
+    text += "💡 Процент очков, конвертируемых в PvP Рейтинг:\n\n"
 
     text += f"🏋️ Упражнения: {exercise_percent}%\n"
     text += f"📦 Комплексы: {complex_percent}%\n"
     text += f"🏆 Челленджи: {challenge_percent}%\n\n"
 
     text += "💡 Пример: При 100 очках за упражнение и 7% конвертации\n"
-    text += f"пользователь получит 7 PvP очков\n\n"
+    text += f"пользователь получит +7 к PvP Рейтингу\n\n"
 
     text += "📝 Выберите что изменить:"
 
@@ -1676,7 +1674,7 @@ async def owner_pvp_exercise_callback(update: Update, context: ContextTypes.DEFA
     text = f"🏋️ **КОНВЕРТАЦИЯ УПРАЖНЕНИЙ**\n\n"
     text += f"Текущий процент: {current_percent}%\n\n"
     text += "💡 Этот процент от очков за упражнение\n"
-    text += "конвертируется в PvP очки\n\n"
+    text += "конвертируется в PvP Рейтинг\n\n"
     text += "📝 Выберите новый процент:"
 
     # Быстрые варианты
@@ -1720,7 +1718,7 @@ async def owner_pvp_complex_callback(update: Update, context: ContextTypes.DEFAU
     text = f"📦 **КОНВЕРТАЦИЯ КОМПЛЕКСОВ**\n\n"
     text += f"Текущий процент: {current_percent}%\n\n"
     text += "💡 Этот процент от очков за комплекс\n"
-    text += "конвертируется в PvP очки\n\n"
+    text += "конвертируется в PvP Рейтинг\n\n"
     text += "📝 Выберите новый процент:"
 
     # Быстрые варианты
@@ -1764,7 +1762,7 @@ async def owner_pvp_challenge_callback(update: Update, context: ContextTypes.DEF
     text = f"🏆 **КОНВЕРТАЦИЯ ЧЕЛЛЕНДЖЕЙ**\n\n"
     text += f"Текущий процент: {current_percent}%\n\n"
     text += "💡 Этот процент от очков за челлендж\n"
-    text += "конвертируется в PvP очки\n\n"
+    text += "конвертируется в PvP Рейтинг\n\n"
     text += "📝 Выберите новый процент:"
 
     # Быстрые варианты
@@ -2005,7 +2003,7 @@ async def owner_pvp_custom_input(update: Update, context: ContextTypes.DEFAULT_T
 
 @owner_only
 async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Начинает процесс перевода PvP очков."""
+    """Начинает процесс перевода PvP Рейтинга."""
     query = update.callback_query
 
     try:
@@ -2027,7 +2025,7 @@ async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFA
             last_name = user[2] or ""
             username = user[3] or ""
 
-            # Получаем PvP очки пользователя
+            # Получаем PvP Рейтинг пользователя
             try:
                 pvp_stats = get_user_pvp_stats(user_id)
                 pvp_points = pvp_stats.get('total_points', 0) if pvp_stats else 0
@@ -2035,13 +2033,13 @@ async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFA
                 logger.warning(f"Не удалось получить PvP для {user_id}: {e}")
                 pvp_points = 0
 
-            # Показываем Имя + Никнейм (если есть) + PvP очки
+            # Показываем Имя + Никнейм (если есть) + PvP Рейтинг
             if username:
                 display_name = f"{first_name} (@{username})"
             else:
                 display_name = f"{first_name} {last_name}".strip()
 
-            # Добавляем PvP очки
+            # Добавляем PvP Рейтинг
             button_text = f"{display_name} - {pvp_points} PvP"
 
             if len(button_text) > 50:
@@ -2219,7 +2217,7 @@ async def owner_pvp_custom_amount_callback(update: Update, context: ContextTypes
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     text = "⌨️ **СВОЯ СУММА**\n\n"
-    text += "Введи количество PvP очков:"
+    text += "Введи количество PvP Рейтинга:"
 
     await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
@@ -2273,7 +2271,7 @@ async def show_pvp_confirm(update, context, message=False):
 
         text = f"💎 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
         text += f"👤 Получатель: {display_user}\n"
-        text += f"🎯 Сумма: {amount} PvP очков\n\n"
+        text += f"🎯 Сумма: {amount} PvP Рейтинга\n\n"
         text += "Подтвердишь перевод?"
     else:
         text = "❌ Ошибка получения данных пользователя"
@@ -2324,19 +2322,16 @@ async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTy
 
                 if user_info:
                     first_name_user = user_info[1] or "Пользователь"
-                    # Экранируем имя для Markdown
-                    safe_first_name = escape_markdown(first_name_user)
-                    notification_text = f"🎁 **ТЫ ПОЛУЧИЛ PvP ОЧКИ!**\n\n"
-                    notification_text += f"🎯 Ты получил: {amount} PvP очков\n"
-                    notification_text += f"💎 Твой баланс: {new_pvp_balance} PvP\n\n"
-                    notification_text += f"💡 Используй PvP для вызова на дуэли!"
+                    notification_text = f"🎁 ТЫ ПОЛУЧИЛ FruNStatus!\n\n"
+                    notification_text += f"🏆 Ты получил: +{amount} к FruNStatus\n"
+                    notification_text += f"💎 Твой FruNStatus: {new_pvp_balance}\n\n"
+                    notification_text += f"💡 Каждые 100 FruNStatus = медаль!"
 
                     logger.info(f"📤 Попытка отправить уведомление о PvP пользователю {user_id}...")
 
                     await bot.send_message(
                         chat_id=user_id,
-                        text=notification_text,
-                        parse_mode="Markdown"
+                        text=notification_text
                     )
                     notification_sent = True
                     logger.info(f"✅ Уведомление о PvP успешно отправлено пользователю {user_id}")
@@ -2349,18 +2344,15 @@ async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTy
             if user_info:
                 first_name = user_info[1] or "Пользователь"
                 username = user_info[3] or ""
-                # Экранируем для Markdown
-                safe_first_name = escape_markdown(first_name)
                 # Показываем Имя + Никнейм (если есть)
                 if username:
-                    safe_username = escape_markdown(f"@{username}")
-                    display_user = f"{safe_first_name} ({safe_username})"
+                    display_user = f"{first_name} (@{username})"
                 else:
-                    display_user = safe_first_name
+                    display_user = first_name
 
-                text = f"✅ **ПЕРЕВОД ВЫПОЛНЕН**\n\n"
+                text = f"✅ ПЕРЕВОД ВЫПОЛНЕН\n\n"
                 text += f"👤 {display_user}\n"
-                text += f"🎯 Начислено: {amount} PvP очков\n"
+                text += f"🎯 Начислено: {amount} FruNStatus\n"
 
                 # Добавляем информацию об уведомлении
                 if notification_sent:
@@ -2378,12 +2370,12 @@ async def owner_pvp_transfer_confirm_callback(update: Update, context: ContextTy
                 else:
                     text += "💡 Пользователь теперь может вызывать на дуэли!"
             else:
-                text = f"✅ Начислено {amount} PvP очков"
+                text = f"✅ Начислено {amount} FruNStatus"
 
             keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+            await query.edit_message_text(text, reply_markup=reply_markup)
         else:
             await query.edit_message_text("❌ Ошибка выполнения перевода")
 
@@ -2410,7 +2402,7 @@ async def owner_pvp_transfer_cancel_callback(update: Update, context: ContextTyp
         context.user_data.pop('pvp_amount', None)
         context.user_data.pop('pvp_transfer_state', None)
 
-        text = "❌ Перевод PvP очков отменен"
+        text = "❌ Перевод PvP Рейтинга отменен"
 
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         reply_markup = InlineKeyboardMarkup(keyboard)

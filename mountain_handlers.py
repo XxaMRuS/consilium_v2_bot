@@ -462,7 +462,7 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_user_data(update, context, "profile_command")
     debug_print(f"🏔️ profile_command: ВЫЗВАНА")
 
-    from database_postgres import get_user_mountain_stats
+    from database_postgres import get_user_mountain_stats, get_user_scoreboard_total, get_fun_fuel_balance
 
     user_id = update.effective_user.id
     stats = get_user_mountain_stats(user_id)
@@ -471,6 +471,10 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Профиль не найден. Пожалуйста,先用 /start зарегистрироваться.")
         debug_print(f"🏔️ profile_command: ВОЗВРАТ (профиль не найден)")
         return
+
+    # Получаем FruNStatus и FFCoin
+    funstatus = get_user_scoreboard_total(user_id) or 0
+    ffcoin = get_fun_fuel_balance(user_id) or 0
 
     # Формируем текст профиля
     group_emoji = "😊 Новичок" if stats['user_group'] == 'newbie' else "😎 Эксперт"
@@ -482,8 +486,10 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 **ПРОФИЛЬ**\n\n"
         f"👤 Имя: {stats['first_name']}\n"
         f"{username_text}"
-        f"📊 Группа: {group_emoji}\n"
-        f"⭐ Очки: {stats['score']}\n\n"
+        f"📊 Группа: {group_emoji}\n\n"
+        f"⛽ FruNFuel: {stats['score']}\n"
+        f"🏆 FruNStatus: {funstatus}\n"
+        f"💰 FFCoin: {ffcoin}\n\n"
         f"⛰️ **ПОЗИЦИЯ НА ГОРЕ**\n"
         f"📍 Место: {stats['position']} из {stats['total']}\n"
         f"📈 От вершины: {percent_text}\n\n"

@@ -2189,7 +2189,12 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
 async def admin_cancel_complex(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отменяет создание комплекса."""
     try:
-        await update.message.reply_text("❌ Создание комплекса отменено")
+        # Проверяем, есть ли callback_query (inline кнопка) или message (команда)
+        if update.callback_query:
+            await update.callback_query.answer()
+            await update.callback_query.edit_message_text("❌ Создание комплекса отменено")
+        elif update.message:
+            await update.message.reply_text("❌ Создание комплекса отменено")
     except Exception as e:
         logger.error(f"Ошибка при отправке сообщения об отмене: {e}")
     finally:

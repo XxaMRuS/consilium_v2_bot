@@ -909,6 +909,7 @@ def main() -> None:
             CommandHandler("cancel", owner_channel_message_cancel),
             CallbackQueryHandler(owner_channel_check_callback, pattern=f'^{OWNER_CHANNEL_CHECK}$')
         ],
+        per_message=False
     )
 
     # Регистрируем ConversationHandler для отправки сообщения в канал

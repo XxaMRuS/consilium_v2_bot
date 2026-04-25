@@ -462,10 +462,16 @@ class AICoachSystem:
         Быстрая рекомендация с fallback
 
         Приоритет:
-        1. Groq (самый быстрый)
-        2. OpenRouter (бесплатные модели)
-        3. YandexGPT (резерв)
+        1. YandexGPT (основной)
+        2. Groq (быстрый)
+        3. OpenRouter (бесплатные модели)
         """
+        # Пробуем YandexGPT (приоритет №1)
+        try:
+            return await self.yandex.get_training_advice(user_data, "Дай быструю мотивацию на сегодня")
+        except Exception as e:
+            logger.warning(f"⚠️ YandexGPT не сработал: {e}, пробуем Groq...")
+
         # Пробуем Groq
         try:
             return await self.groq.get_quick_recommendation(user_data, current_workout)
@@ -476,12 +482,6 @@ class AICoachSystem:
         try:
             return await self.openrouter.get_quick_recommendation(user_data, current_workout)
         except Exception as e:
-            logger.warning(f"⚠️ OpenRouter не сработал: {e}, пробуем Yandex...")
-
-        # Пробуем Yandex
-        try:
-            return await self.yandex.get_training_advice(user_data, "Дай быструю мотивацию на сегодня")
-        except Exception as e:
             logger.error(f"❌ Все AI недоступны: {e}")
             return "⚠️ Все AI-сервисы暂时 недоступны. Попробуйте позже!"
 
@@ -490,10 +490,16 @@ class AICoachSystem:
         Совет по тренировке с fallback
 
         Приоритет:
-        1. Groq (быстрый и качественный)
-        2. OpenRouter (бесплатные модели)
-        3. YandexGPT (резерв)
+        1. YandexGPT (основной)
+        2. Groq (быстрый и качественный)
+        3. OpenRouter (бесплатные модели)
         """
+        # Пробуем YandexGPT (приоритет №1)
+        try:
+            return await self.yandex.get_training_advice(user_data, question)
+        except Exception as e:
+            logger.warning(f"⚠️ YandexGPT не сработал: {e}, пробуем Groq...")
+
         # Пробуем Groq
         try:
             return await self.groq.get_training_advice(user_data, question)
@@ -503,12 +509,6 @@ class AICoachSystem:
         # Пробуем OpenRouter
         try:
             return await self.openrouter.get_training_advice(user_data, question)
-        except Exception as e:
-            logger.warning(f"⚠️ OpenRouter не сработал: {e}, пробуем Yandex...")
-
-        # Пробуем Yandex
-        try:
-            return await self.yandex.get_training_advice(user_data, question)
         except Exception as e:
             logger.error(f"❌ Все AI недоступны: {e}")
             return "⚠️ Все AI-сервисы暂时 недоступны. Попробуйте позже!"
@@ -528,17 +528,33 @@ class AICoachSystem:
 
     async def analyze_user_progress(self, user_data: dict, workout_history: list) -> str:
         """
-        Анализ прогресса через Groq (самый быстрый)
+        Анализ прогресса с fallback
 
-        Использует Groq как основной API
+        Приоритет:
+        1. YandexGPT (основной)
+        2. Groq (быстрый)
+        3. OpenRouter (бесплатные модели)
         """
-        try:
-            # Формируем prompt для анализа прогресса
-            prompt = self._create_progress_prompt(user_data, workout_history)
-            return await self.groq._send_request(prompt)
+        # Формируем prompt для анализа прогресса
+        prompt = self._create_progress_prompt(user_data, workout_history)
 
+        # Пробуем YandexGPT (приоритет №1)
+        try:
+            return await self.yandex._send_request(prompt)
         except Exception as e:
-            logger.error(f"❌ Не удалось проанализировать прогресс: {e}")
+            logger.warning(f"⚠️ YandexGPT не сработал для прогресса: {e}, пробуем Groq...")
+
+        # Пробуем Groq
+        try:
+            return await self.groq._send_request(prompt)
+        except Exception as e:
+            logger.warning(f"⚠️ Groq не сработал для прогресса: {e}, пробуем OpenRouter...")
+
+        # Пробуем OpenRouter
+        try:
+            return await self.openrouter._try_model(self.openrouter.models[0], prompt)
+        except Exception as e:
+            logger.error(f"❌ Все AI недоступны для анализа прогресса: {e}")
             return "⚠️ Не удалось проанализировать прогресс. Попробуйте позже."
 
     def _create_progress_prompt(self, user_data: dict, workout_history: list) -> str:

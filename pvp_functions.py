@@ -36,7 +36,7 @@ def get_all_pvp_settings():
 
 def add_pvp_points_from_workout(user_id, base_points, workout_type='exercise'):
     """
-    Начисляет PvP очки на основе настроек конвертации
+    Начисляет PvP Рейтинг на основе настроек конвертации
     workout_type: 'exercise', 'complex', 'challenge'
     """
     # Определяем какой процент использовать

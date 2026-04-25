@@ -35,22 +35,22 @@ async def ai_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += "Умные функции для твоих тренировок:\n\n"
 
     if available['yandex']:
-        text += "✅ Умный тренер (YandexGPT)\n"
+        text += "✅ Умный тренер (YandexGPT / Алиса - БЕСПЛАТНЫЙ)\n"
     else:
-        text += "❌ Умный тренер (не доступен)\n"
+        text += "❌ Умный тренер (YandexGPT - не доступен)\n"
 
     if available['gemini']:
-        text += "✅ Анализ фото (Gemini)\n"
+        text += "✅ Анализ фото (Gemini - БЕСПЛАТНЫЙ)\n"
     else:
-        text += "❌ Анализ фото (не доступен)\n"
+        text += "❌ Анализ фото (Gemini - не доступен)\n"
 
     if available['groq']:
-        text += "✅ Мгновенные советы (Groq)\n"
+        text += "✅ Мгновенные советы (Groq - БЕСПЛАТНЫЙ)\n"
     else:
-        text += "❌ Мгновенные советы (не доступен)\n"
+        text += "❌ Мгновенные советы (Groq - не доступен)\n"
 
-    if available['groq'] or available['openrouter']:
-        text += "✅ Анализ прогресса (AI)\n"
+    if available['groq'] or available['openrouter'] or available['yandex']:
+        text += "✅ Анализ прогресса (YandexGPT, Groq, OpenRouter - БЕСПЛАТНЫЕ)\n"
     else:
         text += "❌ Анализ прогресса (не доступен)\n"
 
@@ -247,8 +247,10 @@ async def ai_recommend(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if not ai_coach.is_available()['groq']:
-        await query.edit_message_text("❌ Groq не подключён. Добавьте GROQ_API_KEY.")
+    # Проверяем наличие любого AI
+    available = ai_coach.is_available()
+    if not any([available['yandex'], available['groq'], available['openrouter']]):
+        await query.edit_message_text("❌ Все AI-сервисы не подключены. Добавьте API ключи.")
         return
 
     # Отправляем "генерирую..."
@@ -276,8 +278,9 @@ async def ai_recommend(update: Update, context: ContextTypes.DEFAULT_TYPE):
         workouts = get_user_workouts(user_id, limit=1)
 
         if workouts:
+            # workouts это кортеж: (id, name, result_value, video_link, date, is_best, type, comment)
             last_workout = {
-                'last_exercise': workouts[0].get('exercise_name', 'Неизвестно'),
+                'last_exercise': workouts[0][1] if workouts[0][1] else 'Неизвестно',
                 'streak': len(workouts)  # Упрощённо
             }
         else:
@@ -309,12 +312,14 @@ async def ai_recommend(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==================== АНАЛИЗ ПРОГРЕССА (DEEPSEEK) ====================
 
 async def ai_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Анализирует прогресс пользователя через Groq"""
+    """Анализирует прогресс пользователя с fallback"""
     query = update.callback_query
     await query.answer()
 
-    if not ai_coach.is_available()['groq']:
-        await query.edit_message_text("❌ Groq не подключён. Добавьте GROQ_API_KEY.")
+    # Проверяем наличие любого AI
+    available = ai_coach.is_available()
+    if not any([available['yandex'], available['groq'], available['openrouter']]):
+        await query.edit_message_text("❌ Все AI-сервисы не подключены. Добавьте API ключи.")
         return
 
     # Отправляем "анализирую..."
@@ -344,10 +349,11 @@ async def ai_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Формируем историю для анализа
         workout_history = []
         for workout in workouts:
+            # workouts это кортеж: (id, name, result_value, video_link, date, is_best, type, comment)
             workout_history.append({
-                'date': workout.get('date', ''),
-                'exercise': workout.get('exercise_name', ''),
-                'result': workout.get('result_value', '')
+                'date': str(workout[4]) if len(workout) > 4 and workout[4] else '',
+                'exercise': workout[1] if len(workout) > 1 and workout[1] else '',
+                'result': str(workout[2]) if len(workout) > 2 and workout[2] else ''
             })
 
         # Анализируем прогресс
