@@ -1135,27 +1135,25 @@ async def owner_ff_amount_callback(update: Update, context: ContextTypes.DEFAULT
         context.user_data.pop('ff_transfer_state', None)
         return ConversationHandler.END
 
-    # Сохраняем сумму и показываем подтверждение
+    # Сохраняем сумму и показываем меню ввода причины
     context.user_data['ff_transfer_amount'] = amount
 
     safe_first_name = escape_markdown(target_user['first_name'])
     username_str = f"@{target_user['username']}" if target_user['username'] else "(нет username)"
     safe_username = escape_markdown(username_str)
-    new_balance = target_user['current_ff'] + amount
 
-    text = "✅ **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+    text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
     text += f"👤 Получатель: {safe_first_name} {safe_username}\n"
     text += f"🆔 ID: {target_user['telegram_id']}\n"
-    text += f"💰 Сумма: {amount} FF\n"
-    text += f"📊 Текущий баланс: {target_user['current_ff']} FF\n"
-    text += f"📊 Новый баланс: {new_balance} FF\n\n"
-    text += "✅ Подтвердите перевод:"
+    text += f"💰 Сумма: {amount} FFCoin\n\n"
+    text += "📝 Введите причину перевода (опционально):\n"
+    text += "• Для наказания укажи причину\n"
+    text += "• Для награждения можно пропустить\n\n"
+    text += "💡 Или нажмите \"⏭️ Пропустить\" ниже:"
 
     keyboard = [
-        [
-            InlineKeyboardButton("✅ Да, перевести", callback_data=OWNER_FF_TRANSFER_CONFIRM_YES),
-            InlineKeyboardButton("❌ Отмена", callback_data=OWNER_FF_TRANSFER_CANCEL),
-        ],
+        [InlineKeyboardButton("⏭️ Пропустить", callback_data="ff_skip_reason")],
+        [InlineKeyboardButton("❌ Отмена", callback_data=OWNER_FF_TRANSFER_CANCEL)],
     ]
 
     try:
@@ -1165,8 +1163,8 @@ async def owner_ff_amount_callback(update: Update, context: ContextTypes.DEFAULT
             logger.error(f"Ошибка отображения: {e}")
             raise
 
-    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_CONFIRM
-    return WAITING_FF_TRANSFER_CONFIRM
+    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_REASON
+    return WAITING_FF_TRANSFER_REASON
 
 
 @owner_only
@@ -1230,18 +1228,107 @@ async def owner_ff_transfer_amount_input(update: Update, context: ContextTypes.D
     # Сохраняем сумму
     context.user_data['ff_transfer_amount'] = amount
 
-    # Показываем подтверждение
+    # Показываем меню ввода причины
     safe_first_name = escape_markdown(target_user['first_name'])
     username_str = f"@{target_user['username']}" if target_user['username'] else "(нет username)"
     safe_username = escape_markdown(username_str)
-    new_balance = target_user['current_ff'] + amount
 
-    text = "💸 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+    text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
     text += f"👤 Получатель: {safe_first_name} {safe_username}\n"
     text += f"🆔 ID: {target_user['telegram_id']}\n"
-    text += f"💰 Сумма: {amount} FF\n"
-    text += f"📊 Текущий баланс: {target_user['current_ff']} FF\n"
-    text += f"📊 Новый баланс: {new_balance} FF\n\n"
+    text += f"💰 Сумма: {amount} FFCoin\n\n"
+    text += "📝 Введите причину перевода (опционально):\n"
+    text += "• Для наказания укажи причину\n"
+    text += "• Для награждения можно пропустить\n\n"
+    text += "💡 Или нажмите \"⏭️ Пропустить\" ниже:"
+
+    keyboard = [
+        [InlineKeyboardButton("⏭️ Пропустить", callback_data="ff_skip_reason")],
+        [InlineKeyboardButton("❌ Отмена", callback_data=OWNER_FF_TRANSFER_CANCEL)],
+    ]
+
+    if update.message:
+        sent_message = await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        context.user_data['ff_transfer_message_id'] = sent_message.message_id
+
+    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_REASON
+    return WAITING_FF_TRANSFER_REASON
+
+
+@owner_only
+async def owner_ff_transfer_reason_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает ввод причины перевода FF."""
+    if not update.message:
+        return
+
+    reason = update.message.text.strip()[:200]  # Ограничиваем 200 символов
+
+    # Сохраняем причину
+    context.user_data['ff_transfer_reason'] = reason
+
+    # Показываем подтверждение с причиной
+    await show_ff_confirm_with_reason(update, context, message=True)
+
+    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_CONFIRM
+    return WAITING_FF_TRANSFER_CONFIRM
+
+
+@owner_only
+async def owner_ff_skip_reason_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Пропускает ввод причины для перевода FF."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    # Устанавливаем пустую причину
+    context.user_data['ff_transfer_reason'] = None
+
+    # Показываем подтверждение
+    await show_ff_confirm_with_reason(update, context)
+
+    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_CONFIRM
+    return WAITING_FF_TRANSFER_CONFIRM
+
+
+async def show_ff_confirm_with_reason(update: Update, context: ContextTypes.DEFAULT_TYPE, message=False):
+    """Показывает подтверждение перевода FF с причиной."""
+    target_user = context.user_data.get('ff_transfer_target')
+    amount = context.user_data.get('ff_transfer_amount', 0)
+    reason = context.user_data.get('ff_transfer_reason', '')
+
+    if not target_user:
+        text = "❌ Ошибка сеанса. Попробуйте снова."
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+
+        if update.message:
+            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        elif update.callback_query:
+            try:
+                await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            except:
+                pass
+        return ConversationHandler.END
+
+    from database_postgres import get_fun_fuel_balance
+    new_balance = get_fun_fuel_balance(target_user['telegram_id']) + amount
+
+    safe_first_name = escape_markdown(target_user['first_name'])
+    username_str = f"@{target_user['username']}" if target_user['username'] else "(нет username)"
+    safe_username = escape_markdown(username_str)
+
+    text = f"✅ **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+    text += f"👤 Получатель: {safe_first_name} {safe_username}\n"
+    text += f"💰 Сумма: {amount} FFCoin\n"
+    text += f"📊 Новый баланс: {new_balance} FFCoin\n\n"
+
+    if reason:
+        text += f"📝 **Причина:** {reason}\n\n"
+    elif amount < 0:
+        text += f"📝 **Причина:** Списание баланса\n\n"
+
     text += "✅ Подтвердите перевод:"
 
     keyboard = [
@@ -1251,11 +1338,17 @@ async def owner_ff_transfer_amount_input(update: Update, context: ContextTypes.D
         ],
     ]
 
-    if update.message:
-        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
-    context.user_data['ff_transfer_state'] = WAITING_FF_TRANSFER_CONFIRM
-    return WAITING_FF_TRANSFER_CONFIRM
+    if message:
+        sent_message = await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        context.user_data['ff_transfer_message_id'] = sent_message.message_id
+    else:
+        query = update.callback_query
+        try:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        except Exception as e:
+            if "not modified" not in str(e):
+                logger.error(f"Ошибка отображения: {e}")
+                raise
 
 
 @owner_only
@@ -2207,10 +2300,46 @@ async def owner_pvp_amount_callback(update: Update, context: ContextTypes.DEFAUL
     amount = int(query.data.split(":")[1])
     context.user_data['pvp_amount'] = amount
 
-    await show_pvp_confirm(update, context)
+    # Показываем меню ввода причины вместо прямого подтверждения
+    user_id = context.user_data.get('pvp_target_user_id')
 
-    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
-    return WAITING_PVP_TRANSFER_CONFIRM
+    from database_postgres import get_user_info
+    user_info = get_user_info(user_id)
+
+    if user_info:
+        first_name = user_info[1] or "Пользователь"
+        username = user_info[3] or ""
+        # Показываем Имя + Никнейм (если есть)
+        if username:
+            display_user = f"{first_name} (@{username})"
+        else:
+            display_user = first_name
+
+        text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
+        text += f"👤 Получатель: {display_user}\n"
+
+        if amount >= 0:
+            text += f"🎯 Начислить: +{amount} FruNStatus\n\n"
+        else:
+            text += f"❌ Списать: {amount} FruNStatus\n\n"
+
+        text += "📝 Введите причину перевода (опционально):\n"
+        text += "• Для наказания укажи причину\n"
+        text += "• Для награждения можно пропустить\n\n"
+        text += "💡 Или нажмите \"⏭️ Пропустить\" ниже:"
+    else:
+        text = "❌ Ошибка получения данных пользователя"
+
+    keyboard = [
+        [InlineKeyboardButton("⏭️ Пропустить", callback_data="pvp_skip_reason")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_REASON
+    return WAITING_PVP_TRANSFER_REASON
 
 
 @owner_only
@@ -2238,17 +2367,143 @@ async def owner_pvp_transfer_amount_input(update: Update, context: ContextTypes.
 
     try:
         amount = int(amount_input)
-
         context.user_data['pvp_amount'] = amount
-        await show_pvp_confirm(update, context, message=True)
 
-        context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
-        return WAITING_PVP_TRANSFER_CONFIRM
+        # Показываем меню ввода причины вместо прямого подтверждения
+        user_id = context.user_data.get('pvp_target_user_id')
+
+        from database_postgres import get_user_info
+        user_info = get_user_info(user_id)
+
+        if user_info:
+            first_name = user_info[1] or "Пользователь"
+            username = user_info[3] or ""
+            # Показываем Имя + Никнейм (если есть)
+            if username:
+                display_user = f"{first_name} (@{username})"
+            else:
+                display_user = first_name
+
+            text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
+            text += f"👤 Получатель: {display_user}\n"
+
+            if amount >= 0:
+                text += f"🎯 Начислить: +{amount} FruNStatus\n\n"
+            else:
+                text += f"❌ Списать: {amount} FruNStatus\n\n"
+
+            text += "📝 Введите причину перевода (опционально):\n"
+            text += "• Для наказания укажи причину\n"
+            text += "• Для награждения можно пропустить\n\n"
+            text += "💡 Или нажмите \"⏭️ Пропустить\" ниже:"
+        else:
+            text = "❌ Ошибка получения данных пользователя"
+
+        keyboard = [
+            [InlineKeyboardButton("⏭️ Пропустить", callback_data="pvp_skip_reason")],
+            [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+        context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_REASON
+        return WAITING_PVP_TRANSFER_REASON
 
     except ValueError:
         await update.message.reply_text("❌ Введи число. Попробуй еще раз:")
         return WAITING_PVP_TRANSFER_AMOUNT
     except Exception as e:
+
+
+@owner_only
+async def owner_pvp_transfer_reason_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает ввод причины перевода PvP."""
+    if not update.message:
+        return
+
+    reason = update.message.text.strip()[:200]  # Ограничиваем 200 символов
+
+    # Сохраняем причину
+    context.user_data['pvp_transfer_reason'] = reason
+
+    # Показываем подтверждение с причиной
+    await show_pvp_confirm_with_reason(update, context, message=True)
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
+    return WAITING_PVP_TRANSFER_CONFIRM
+
+
+@owner_only
+async def owner_pvp_skip_reason_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Пропускает ввод причины для перевода PvP."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    # Устанавливаем пустую причину
+    context.user_data['pvp_transfer_reason'] = None
+
+    # Показываем подтверждение
+    await show_pvp_confirm_with_reason(update, context)
+
+    context.user_data['pvp_transfer_state'] = WAITING_PVP_TRANSFER_CONFIRM
+    return WAITING_PVP_TRANSFER_CONFIRM
+
+
+async def show_pvp_confirm_with_reason(update: Update, context: ContextTypes.DEFAULT_TYPE, message=False):
+    """Показывает подтверждение перевода PvP с причиной."""
+    user_id = context.user_data.get('pvp_target_user_id')
+    amount = context.user_data.get('pvp_amount', 0)
+    reason = context.user_data.get('pvp_transfer_reason', '')
+
+    from database_postgres import get_user_info
+    user_info = get_user_info(user_id)
+
+    if user_info:
+        first_name = user_info[1] or "Пользователь"
+        username = user_info[3] or ""
+        # Показываем Имя + Никнейм (если есть)
+        if username:
+            display_user = f"{first_name} (@{username})"
+        else:
+            display_user = first_name
+
+        text = f"🏆 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
+        text += f"👤 Получатель: {display_user}\n"
+
+        if amount >= 0:
+            text += f"🎯 Начислить: +{amount} FruNStatus\n\n"
+        else:
+            text += f"❌ Списать: {amount} FruNStatus\n\n"
+
+        if reason:
+            text += f"📝 **Причина:** {reason}\n\n"
+        elif amount < 0:
+            text += f"📝 **Причина:** Списание баланса\n\n"
+
+        text += "Подтвердишь?"
+    else:
+        text = "❌ Ошибка получения данных пользователя"
+
+    keyboard = [
+        [InlineKeyboardButton("✅ Подтвердить", callback_data="owner_pvp_transfer_confirm_yes")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="owner_pvp_transfer_cancel")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if message:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+    else:
+        query = update.callback_query
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+
+
+async def show_pvp_confirm(update, context, message=False):
         logger.error(f"Ошибка ввода суммы: {e}")
         await update.message.reply_text(f"❌ Ошибка: {e}")
         return ConversationHandler.END

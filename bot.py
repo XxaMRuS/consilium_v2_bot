@@ -37,8 +37,10 @@ from owner_handlers import (
     owner_pvp_transfer_confirm_callback, owner_pvp_transfer_cancel_callback,
     owner_channel_check_callback, owner_channel_change_id_callback, owner_channel_reconnect_callback,
     owner_channel_message_callback, owner_channel_message_send, owner_channel_message_cancel,
-    WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM, WAITING_PVP_CUSTOM_INPUT,
-    WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CONFIRM,
+    owner_ff_transfer_reason_input, owner_ff_skip_reason_callback,
+    owner_pvp_transfer_reason_input, owner_pvp_skip_reason_callback,
+    WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_REASON, WAITING_FF_TRANSFER_CONFIRM, WAITING_PVP_CUSTOM_INPUT,
+    WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_REASON, WAITING_PVP_TRANSFER_CONFIRM,
     WAITING_CHANNEL_MESSAGE,
     OWNER_MENU, OWNER_STATS, OWNER_BALANCES, OWNER_CHAMPIONS, OWNER_CHAMPIONS_HISTORY, OWNER_CHAMPIONS_MENU, OWNER_CHAMPIONS_CALCULATE, OWNER_CHAMPIONS_CALCULATE_CURRENT, OWNER_CHAMPIONS_CONFIRM,
     OWNER_COMPETITIONS, OWNER_COMPETITIONS_TOGGLE, OWNER_COMPETITIONS_ENABLE_ALL, OWNER_COMPETITIONS_DISABLE_ALL, OWNER_COMPETITIONS_ENABLE_BEGINNERS,
@@ -833,8 +835,18 @@ def main() -> None:
             ],
             WAITING_FF_TRANSFER_AMOUNT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, owner_ff_transfer_amount_input),
-                CallbackQueryHandler(owner_ff_amount_callback, pattern=r'^ff_amount:\d+$'),
+                CallbackQueryHandler(owner_ff_amount_callback, pattern=r'^ff_amount:[\-]?\d+$'),
                 CallbackQueryHandler(owner_ff_custom_amount_callback, pattern='^ff_custom_amount$'),
+                CallbackQueryHandler(owner_ff_transfer_cancel_callback, pattern=f'^{OWNER_FF_TRANSFER_CANCEL}$')
+            ],
+            WAITING_FF_TRANSFER_REASON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_ff_transfer_reason_input),
+                CallbackQueryHandler(owner_ff_skip_reason_callback, pattern='^ff_skip_reason'),
+                CallbackQueryHandler(owner_ff_transfer_cancel_callback, pattern=f'^{OWNER_FF_TRANSFER_CANCEL}$')
+            ],
+            WAITING_FF_TRANSFER_REASON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_ff_transfer_reason_input),
+                CallbackQueryHandler(owner_ff_skip_reason_callback, pattern='^ff_skip_reason'),
                 CallbackQueryHandler(owner_ff_transfer_cancel_callback, pattern=f'^{OWNER_FF_TRANSFER_CANCEL}$')
             ],
             WAITING_FF_TRANSFER_CONFIRM: [
@@ -862,6 +874,11 @@ def main() -> None:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, owner_pvp_transfer_amount_input),
                 CallbackQueryHandler(owner_pvp_amount_callback, pattern=r'^pvp_amount:\d+$'),
                 CallbackQueryHandler(owner_pvp_custom_amount_callback, pattern='^pvp_custom_amount$'),
+                CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')
+            ],
+            WAITING_PVP_TRANSFER_REASON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, owner_pvp_transfer_reason_input),
+                CallbackQueryHandler(owner_pvp_skip_reason_callback, pattern='^pvp_skip_reason'),
                 CallbackQueryHandler(owner_pvp_transfer_cancel_callback, pattern=f'^{OWNER_PVP_TRANSFER_CANCEL}$')
             ],
             WAITING_PVP_TRANSFER_CONFIRM: [
