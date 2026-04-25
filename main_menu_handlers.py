@@ -11,27 +11,27 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     text = f"👋 Привет, **{user_first_name}**! Добро пожаловать в фитнес-бот!\n\n"
 
-    # Получаем баланс FRuN монет
+    # Получаем баланс FFCoin
     try:
         frun_balance = get_user_coin_balance(user_id)
-        text += f"💎 **FRuN монеты:** {frun_balance}\n"
-        text += f"💡 Валюта бота (покупки, награды)\n\n"
+        text += f"💰 **FFCoin:** {frun_balance}\n"
+        text += f"💡 Валюта для ставок\n\n"
     except Exception as e:
-        text += f"💎 **FRuN монеты:** Н/Д\n"
-        text += f"💡 Валюта бота (покупки, награды)\n\n"
+        text += f"💰 **FFCoin:** Н/Д\n"
+        text += f"💡 Валюта для ставок\n\n"
 
-    # Получаем спортивные очки для PvP
+    # Получаем FruNStatus
     try:
         pvp_points = get_user_scoreboard_total(user_id)
-        text += f"⚡ **Спортивные очки:** {pvp_points}\n"
-        text += f"💡 Зарабатываются тренировками, используются для PvP\n\n"
+        text += f"🏆 **FruNStatus:** {pvp_points}\n"
+        text += f"💡 Твой ранг (каждые 100 = медаль!)\n\n"
     except Exception as e:
-        text += f"⚡ **Спортивные очки:** Н/Д\n"
-        text += f"💡 Зарабатываются тренировками, используются для PvP\n\n"
+        text += f"🏆 **FruNStatus:** Н/Д\n"
+        text += f"💡 Твой ранг (каждые 100 = медаль!)\n\n"
 
-    # Добавляем информацию об очках на Горе
-    text += f"⭐ **Очки на Горе:** Рейтинговая система\n"
-    text += f"💡 Отдельная система рейтинга"
+    # Добавляем информацию об FruNFuel
+    text += f"⛽ **FruNFuel:** Очки на Горе Успеха\n"
+    text += f"💡 Рейтинговая система"
 
     text += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n"
     text += "🎯 **Выбери раздел:**"
