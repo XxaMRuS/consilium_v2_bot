@@ -2493,6 +2493,8 @@ async def owner_channel_check_callback(update: Update, context: ContextTypes.DEF
 
 
 @owner_only
+
+
 async def owner_channel_change_id_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показывает инструкции для изменения ID канала."""
     query = update.callback_query
@@ -2500,164 +2502,20 @@ async def owner_channel_change_id_callback(update: Update, context: ContextTypes
     try:
         await query.answer()
 
-        text = "📝 **ИЗМЕНЕНИЕ ID КАНАЛА**\n\n"
-        text += "📋 **Инструкция:**\n\n"
-        text += "1. **Добавь бота в канал** как администратора\n"
-        text += "2. **Узнай ID канала:**\n"
-        text += "   • Перешли @getmyid_bot сообщение из канала\n"
-        text += "   • Или forwarding: @channel_id_bot\n\n"
-        text += "3. **Введи ID канала** в формате:\n"
-        text += "   • `-100XXXXXXXXX` (для публичных/приватных)\n"
-        text += "   • `@channelname` (для публичных)\n\n"
-        text += "4. **Перезапусти бота** после изменения\\n\\n"
-        text += "💡 **Где изменить:**\\n\\n"
-        text += "• В файле .env: NOTIFICATION_CHANNEL_ID\\n"
-        text += "• Или в Render - Environment Variables\\n\\n"
-        text += "⚠️ После изменения ID перезапусти бота!"
+        text = "📝 ИЗМЕНЕНИЕ ID КАНАЛА\n\n"
+        text += "📋 ИНСТРУКЦИЯ:\n\n"
+        text += "1. Добавь бота в канал как администратор\n"
+        text += "2. Узнай ID канала через @getmyid_bot\n"
+        text += "3. Измени в .env: NOTIFICATION_CHANNEL_ID\n"
+        text += "4. Или в Render - Environment Variables\n"
+        text += "5. Перезапусти бота после изменения"
 
         keyboard = [
             [InlineKeyboardButton("🔄 Проверить подключение", callback_data=OWNER_CHANNEL_CHECK)],
             [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
         ]
 
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
     except Exception as e:
         logger.error(f"Ошибка отображения инструкций: {e}")
-
-
-@owner_only
-async def owner_channel_reconnect_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Переподключается к каналу и показывает подробную информацию."""
-    query = update.callback_query
-
-    try:
-        await query.answer("🔄 Переподключение...")
-
-        import os
-        from dotenv import load_dotenv
-        load_dotenv()
-
-        notification_channel = os.getenv('NOTIFICATION_CHANNEL_ID')
-
-        if not notification_channel:
-            text = "❌ **КАНАЛ НЕ НАСТРОЕН**\n\n"
-            text += "Канал уведомлений не указан в переменных окружения.\n\n"
-            text += "📝 **Добавь в .env:**\n"
-            text += "`NOTIFICATION_CHANNEL_ID=-100XXXXXXXXX`\n\n"
-            text += "Или введи новый ID:"
-        else:
-            try:
-                bot = context.bot
-
-                # Получаем информацию о канале
-                chat = await bot.get_chat(notification_channel)
-
-                text = "✅ **ПОДКЛЮЧЕНИЕ К КАНАЛУ**\n\n"
-
-                # Информация о канале
-                chat_title = chat.title if hasattr(chat, 'title') else "Канал"
-                chat_type = chat.type if hasattr(chat, 'type') else "unknown"
-
-                text += f"📢 **Название:** {chat_title}\n"
-                text += f"🆔 **ID:** `{notification_channel}`\n"
-                text += f"📋 **Тип:** {chat_type}\n\n"
-
-                # Проверяем права бота
-                try:
-                    chat_member = await bot.get_chat_member(notification_channel, bot.id)
-
-                    if chat_member:
-                        status = chat_member.status
-                        text += f"👤 **Статус бота:** {status}\n"
-
-                        # Проверяем различные права
-                        can_post_messages = chat_member.can_post_messages if hasattr(chat_member, 'can_post_messages') else False
-                        can_edit_messages = chat_member.can_edit_messages if hasattr(chat_member, 'can_edit_messages') else False
-                        can_delete_messages = chat_member.can_delete_messages if hasattr(chat_member, 'can_delete_messages') else False
-
-                        text += f"📝 **Писать сообщения:** {'✅ Да' if can_post_messages else '❌ Нет'}\n"
-                        text += f"✏️ **Редактировать:** {'✅ Да' if can_edit_messages else '❌ Нет'}\n"
-                        text += f"🗑️ **Удалять:** {'✅ Да' if can_delete_messages else '❌ Нет'}\n\n"
-
-                        if status == 'administrator':
-                            text += "✅ **Бот является администратором канала**\n\n"
-                        elif status == 'member':
-                            text += "⚠️ **Бот является участником канала**\n"
-                            text += "💡 **Рекомендация:** Сделай бота администратором для полной функциональности\n\n"
-                        else:
-                            text += f"⚠️ **Неопределенный статус: {status}**\n\n"
-
-                except Exception as e:
-                    text += f"❌ Не удалось проверить права: {str(e)[:50]}...\n\n"
-
-                # Пробуем отправить тестовое сообщение
-                try:
-                    test_msg = await bot.send_message(
-                        chat_id=notification_channel,
-                        text="🔄 Тестовое сообщение от администратора\n\n✅ Подключение к каналу работает!"
-                    )
-                    text += "📬 **Тестовое сообщение:** ✅ Отправлено успешно\n\n"
-                except Exception as e:
-                    error_msg = str(e)
-                    text += f"📬 **Тестовое сообщение:** ❌ Ошибка\n"
-                    text += f"Причина: {error_msg[:80]}...\n\n"
-
-                    if "bot was blocked" in error_msg.lower():
-                        text += "💡 **Решение:** Проверь, не заблокирован ли бот в канале\n\n"
-                    elif "not enough rights" in error_msg.lower():
-                        text += "💡 **Решение:** Выдай боту права администратора\n\n"
-                    elif "chat not found" in error_msg.lower():
-                        text += "💡 **Решение:** Проверь правильность ID канала\n\n"
-
-                text += "💡 **Если есть проблемы:**\n"
-                text += "1. Убедись, что бот добавлен в канал\n"
-                text += "2. Выдай боту права администратора\n"
-                text += "3. Проверь правильность ID канала"
-
-                keyboard = [
-                    [InlineKeyboardButton("🔄 Обновить", callback_data=OWNER_CHANNEL_RECONNECT)],
-                    [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
-                    [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
-                ]
-
-                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                return
-
-            except Exception as e:
-                text = f"❌ **ОШИБКА ПОДКЛЮЧЕНИЯ**\n\n"
-                text += f"Не удалось подключиться к каналу:\n"
-                text += f"`{notification_channel}`\n\n"
-                text += f"**Ошибка:** {str(e)[:100]}\n\n"
-
-                if "chat not found" in str(e).lower():
-                    text += "💡 **Возможные причины:**\n"
-                    text += "• Неверный ID канала\n"
-                    text += "• Бот не добавлен в канал\n"
-                    text += "• Канал не существует\n\n"
-                elif "bot was blocked" in str(e).lower():
-                    text += "💡 **Причина:** Бот заблокирован в канале\n\n"
-                elif "not enough rights" in str(e).lower():
-                    text += "💡 **Причина:** Недостаточно прав у бота\n\n"
-
-                text += "📝 **Попробуй:**\n"
-                text += "1. Изменить ID канала\n"
-                text += "2. Добавить бота в канал\n"
-                text += "3. Выдать права администратора"
-
-                keyboard = [
-                    [InlineKeyboardButton("📝 Изменить ID", callback_data="owner_channel_change_id")],
-                    [InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]
-                ]
-
-                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                return
-
-    except Exception as e:
-        logger.error(f"Ошибка переподключения: {e}")
-        text = f"❌ Ошибка: {e}"
-        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
-        try:
-            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
