@@ -8,6 +8,7 @@ import logging
 import os
 import asyncio
 import random
+from validation_utils import safe_int_convert
 import colorsys
 from datetime import datetime, timedelta
 from functools import wraps
@@ -593,7 +594,16 @@ async def mountain_profile_callback(update: Update, context: ContextTypes.DEFAUL
 
     # Получаем user_id из callback_data
     callback_data = query.data
-    target_user_id = int(callback_data.split("_")[-1])
+
+    success, target_user_id, error = safe_int_convert(
+        callback_data.split("_")[-1] if callback_data else "",
+        "target_user_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     # Получаем статистику пользователя
     from database_postgres import get_user_mountain_stats, get_fun_fuel_balance, get_user_coin_balance, get_user_pvp_stats

@@ -5,6 +5,7 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, CommandHandler, CallbackQueryHandler, filters
+from validation_utils import safe_int_convert, safe_callback_data_parse, validate_user_id
 
 from database_postgres import (
   get_exercises, get_exercise_by_id,
@@ -121,7 +122,15 @@ async def show_exercise_card(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
 
     # Формат: sport_exercise_view_{exercise_id}
-    exercise_id = int(query.data.split("_")[-1])
+    success, exercise_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "exercise_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     # Получаем информацию об упражнении
     exercise = get_exercise_by_id(exercise_id)
@@ -166,10 +175,35 @@ async def show_exercise_card(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def start_workout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показывает формат ввода и начинает ввод результата упражнения."""
     query = update.callback_query
+
+    # Проверка rate limit - 20 запросов в минуту
+    from rate_limiter import check_user_rate_limit
+    user_id = update.effective_user.id
+    allowed, remaining, retry_after = await check_user_rate_limit(user_id, max_requests=20, period=60)
+
+    if not allowed:
+        minutes = retry_after // 60
+        seconds = retry_after % 60
+        if minutes > 0:
+            wait_msg = f"⚠️ Слишком много запросов. Попробуйте через {minutes}мин {seconds}сек."
+        else:
+            wait_msg = f"⚠️ Слишком много запросов. Попробуйте через {retry_after}сек."
+
+        await query.answer(wait_msg, show_alert=True)
+        return
+
     await query.answer()
 
     # Формат: sport_exercise_do_{exercise_id}
-    exercise_id = int(query.data.split("_")[-1])
+    success, exercise_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "exercise_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     # Сохраняем ID упражнения
     context.user_data['current_workout_exercise_id'] = exercise_id
@@ -554,12 +588,23 @@ async def show_complex_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logging.warning(f"Не удалось ответить на callback: {e}")
 
     # Извлекаем complex_id из callback_data
     callback_data = query.data
-    complex_id = int(callback_data.split(f"{SPORT_COMPLEX_START}_")[1])
+
+    try:
+        complex_part = callback_data.split(f"{SPORT_COMPLEX_START}_")[1] if callback_data else ""
+        success, complex_id, error = safe_int_convert(complex_part, "complex_id", min_value=1)
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
+    except (IndexError, AttributeError) as e:
+        logging.error(f"Некорректный callback_data: {callback_data}, error: {e}")
+        await query.answer("❌ Некорректные данные", show_alert=True)
+        return
 
     # Получаем данные комплекса
     complex_data = get_complex_by_id(complex_id)
@@ -635,12 +680,23 @@ async def start_complex_execution(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logging.warning(f"Не удалось ответить на callback: {e}")
 
     # Извлекаем complex_id из callback_data
     callback_data = query.data
-    complex_id = int(callback_data.split(f"{SPORT_COMPLEX_DO}_")[1])
+
+    try:
+        complex_part = callback_data.split(f"{SPORT_COMPLEX_DO}_")[1] if callback_data else ""
+        success, complex_id, error = safe_int_convert(complex_part, "complex_id", min_value=1)
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
+    except (IndexError, AttributeError) as e:
+        logging.error(f"Некорректный callback_data: {callback_data}, error: {e}")
+        await query.answer("❌ Некорректные данные", show_alert=True)
+        return
 
     # Получаем user_id
     user_id = update.effective_user.id

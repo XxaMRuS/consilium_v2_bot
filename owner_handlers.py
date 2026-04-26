@@ -6,6 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
 from database_postgres import get_db_connection, release_db_connection, is_owner
+from validation_utils import safe_int_convert
 
 logger = logging.getLogger(__name__)
 
@@ -703,7 +704,25 @@ async def owner_competitions_toggle_callback(update: Update, context: ContextTyp
         return
 
     try:
-        exercise_id = int(callback_data.split(":")[1])
+        try:
+            parts = callback_data.split(":")
+            if len(parts) < 2:
+                await query.answer("❌ Некорректные данные", show_alert=True)
+                return
+
+            success, exercise_id, error = safe_int_convert(
+                parts[1],
+                "exercise_id",
+                min_value=1
+            )
+
+            if not success:
+                await query.answer(f"❌ {error}", show_alert=True)
+                return
+        except (IndexError, AttributeError) as e:
+            logging.error(f"Ошибка разбора callback_data: {e}")
+            await query.answer("❌ Некорректные данные", show_alert=True)
+            return
     except (IndexError, ValueError):
         logger.error(f"Не удалось извлечь exercise_id из: {callback_data}")
         return
@@ -913,7 +932,25 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
         return
 
     try:
-        target_user_id = int(callback_data.split(":")[1])
+        try:
+            parts = callback_data.split(":")
+            if len(parts) < 2:
+                await query.answer("❌ Некорректные данные", show_alert=True)
+                return
+
+            success, target_user_id, error = safe_int_convert(
+                parts[1],
+                "target_user_id",
+                min_value=1
+            )
+
+            if not success:
+                await query.answer(f"❌ {error}", show_alert=True)
+                return
+        except (IndexError, AttributeError) as e:
+            logging.error(f"Ошибка разбора callback_data: {e}")
+            await query.answer("❌ Некорректные данные", show_alert=True)
+            return
     except (IndexError, ValueError):
         logger.error(f"Не удалось извлечь user_id из: {callback_data}")
         return
@@ -1129,7 +1166,25 @@ async def owner_ff_amount_callback(update: Update, context: ContextTypes.DEFAULT
         return
 
     try:
-        amount = int(callback_data.split(":")[1])
+        try:
+            parts = callback_data.split(":")
+            if len(parts) < 2:
+                await query.answer("❌ Некорректные данные", show_alert=True)
+                return
+
+            success, amount, error = safe_int_convert(
+                parts[1],
+                "amount",
+                min_value=1
+            )
+
+            if not success:
+                await query.answer(f"❌ {error}", show_alert=True)
+                return
+        except (IndexError, AttributeError) as e:
+            logging.error(f"Ошибка разбора callback_data: {e}")
+            await query.answer("❌ Некорректные данные", show_alert=True)
+            return
     except (IndexError, ValueError):
         logger.error(f"Не удалось извлечь сумму из: {callback_data}")
         return
@@ -2189,7 +2244,25 @@ async def owner_pvp_select_user_callback(update: Update, context: ContextTypes.D
     query = update.callback_query
     await query.answer()
 
-    user_id = int(query.data.split(":")[1])
+    try:
+        parts = query.data.split(":")
+        if len(parts) < 2:
+            await query.answer("❌ Некорректные данные", show_alert=True)
+            return
+
+        success, user_id, error = safe_int_convert(
+            parts[1],
+            "user_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
+    except (IndexError, AttributeError) as e:
+        logging.error(f"Ошибка разбора callback_data: {e}")
+        await query.answer("❌ Некорректные данные", show_alert=True)
+        return
     context.user_data['pvp_target_user_id'] = user_id
 
     await show_pvp_amount_menu(update, user_id)
@@ -3095,7 +3168,25 @@ async def owner_force_finish_pvp_callback(update: Update, context: ContextTypes.
     except:
         pass
 
-    challenge_id = int(query.data.split(":")[1])
+    try:
+        parts = query.data.split(":")
+        if len(parts) < 2:
+            await query.answer("❌ Некорректные данные", show_alert=True)
+            return
+
+        success, challenge_id, error = safe_int_convert(
+            parts[1],
+            "challenge_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
+    except (IndexError, AttributeError) as e:
+        logging.error(f"Ошибка разбора callback_data: {e}")
+        await query.answer("❌ Некорректные данные", show_alert=True)
+        return
     logger.info(f"🎯 [FORCE_FINISH] Начало принудительного завершения вызова #{challenge_id}")
 
     from database_postgres import force_finish_pvp_challenge, get_pvp_challenge

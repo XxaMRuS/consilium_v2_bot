@@ -13,6 +13,7 @@ from database_postgres import (
 import channel_notifications
 from formatters import format_number
 from cache_manager import DataCache
+from validation_utils import safe_int_convert
 
 logger = logging.getLogger(__name__)
 
@@ -426,7 +427,18 @@ async def admin_add_level(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await safe_callback_answer(query)
 
-    level = int(query.data.split('_')[-1])
+    success, level, error = safe_int_convert(
+        query.data.split('_')[-1] if query.data else "",
+        "level",
+        min_value=1,
+        max_value=3
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        context.user_data.clear()
+        return ConversationHandler.END
+
     target_user_id = context.user_data.get('admin_add_target_id')
     added_by = update.effective_user.id
 
@@ -1070,7 +1082,15 @@ async def admin_challenge_multi_exercise_select(update: Update, context: Context
 
     elif callback_data.startswith("ch_multi_ex_"):
         # Добавляем/убираем упражнение из списка
-        exercise_id = int(callback_data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            callback_data.split("_")[-1] if callback_data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return CHALLENGE_METRIC
 
         # Инициализируем список если его нет
         if 'challenge_selected_exercises' not in context.user_data:
@@ -1354,7 +1374,15 @@ async def admin_view_challenge_callback(update: Update, context: ContextTypes.DE
     await safe_callback_answer(query)
 
     # Получаем challenge_id из callback_data
-    challenge_id = int(query.data.split("_")[-1])
+    success, challenge_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "challenge_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_challenge_by_id
     from datetime import date
@@ -1420,7 +1448,15 @@ async def admin_delete_challenge_callback(update: Update, context: ContextTypes.
     await safe_callback_answer(query)
 
     # Получаем challenge_id из callback_data
-    challenge_id = int(query.data.split("_")[-1])
+    success, challenge_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "challenge_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_challenge_by_id, delete_challenge
 
@@ -1458,7 +1494,15 @@ async def admin_confirm_delete_challenge_callback(update: Update, context: Conte
     await safe_callback_answer(query)
 
     # Получаем challenge_id из callback_data
-    challenge_id = int(query.data.split("_")[-1])
+    success, challenge_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "challenge_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_challenge_by_id, delete_challenge
 
@@ -1742,7 +1786,15 @@ async def admin_list_exercises_callback(update: Update, context: ContextTypes.DE
     # Получаем номер страницы из callback_data или из context
     page = 0
     if query.data and query.data.startswith("admin_list_exercises_page_"):
-        page = int(query.data.split("_")[-1])
+        success, page, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "page",
+            min_value=0
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
 
     exercises = get_all_exercises()
 
@@ -1808,7 +1860,15 @@ async def admin_list_challenges_callback(update: Update, context: ContextTypes.D
     # Получаем номер страницы из callback_data или из context
     page = 0
     if query.data and query.data.startswith("admin_list_challenges_page_"):
-        page = int(query.data.split("_")[-1])
+        success, page, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "page",
+            min_value=0
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
 
     challenges = get_all_challenges()
 
@@ -2053,7 +2113,15 @@ async def admin_complex_exercise_toggle(update: Update, context: ContextTypes.DE
     if query.data == 'complex_ex_done':
         return await admin_complex_exercise_done(update, context)
 
-    exercise_id = int(query.data.replace('complex_ex_', ''))
+    success, exercise_id, error = safe_int_convert(
+        query.data.replace('complex_ex_', '') if query.data else "",
+        "exercise_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     # Инициализируем список выбранных упражнений если его нет
     if 'complex_selected_exercises' not in context.user_data:
@@ -2231,7 +2299,15 @@ async def admin_list_complexes_callback(update: Update, context: ContextTypes.DE
     # Получаем номер страницы из callback_data
     page = 0
     if query.data and query.data.startswith("admin_list_complexes_page_"):
-        page = int(query.data.split("_")[-1])
+        success, page, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "page",
+            min_value=0
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
 
     complexes = get_all_complexes(active_only=False)
 
@@ -2304,7 +2380,15 @@ async def admin_view_complex_callback(update: Update, context: ContextTypes.DEFA
     await safe_callback_answer(query)
 
     # Получаем complex_id из callback_data
-    complex_id = int(query.data.split("_")[-1])
+    success, complex_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "complex_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_complex_by_id, get_complex_exercises
 
@@ -2390,7 +2474,15 @@ async def admin_delete_complex_callback(update: Update, context: ContextTypes.DE
     await safe_callback_answer(query)
 
     # Получаем complex_id из callback_data
-    complex_id = int(query.data.split("_")[-1])
+    success, complex_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "complex_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_complex_by_id
 
@@ -2422,7 +2514,15 @@ async def admin_confirm_delete_complex_callback(update: Update, context: Context
     await safe_callback_answer(query)
 
     # Получаем complex_id из callback_data
-    complex_id = int(query.data.split("_")[-1])
+    success, complex_id, error = safe_int_convert(
+        query.data.split("_")[-1] if query.data else "",
+        "complex_id",
+        min_value=1
+    )
+
+    if not success:
+        await query.answer(f"❌ {error}", show_alert=True)
+        return
 
     from database_postgres import get_complex_by_id, delete_complex
 
@@ -2538,7 +2638,15 @@ async def admin_edit_exercise_name(update: Update, context: ContextTypes.DEFAULT
 
     # Извлекаем exercise_id из callback_data
     if query.data and query.data.startswith("edit_name_"):
-        exercise_id = int(query.data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
         context.user_data['edit_exercise_id'] = exercise_id
     else:
         exercise_id = context.user_data.get('edit_exercise_id')
@@ -2560,7 +2668,15 @@ async def admin_edit_exercise_desc(update: Update, context: ContextTypes.DEFAULT
 
     # Извлекаем exercise_id из callback_data
     if query.data and query.data.startswith("edit_desc_"):
-        exercise_id = int(query.data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
         context.user_data['edit_exercise_id'] = exercise_id
     else:
         exercise_id = context.user_data.get('edit_exercise_id')
@@ -2582,7 +2698,15 @@ async def admin_edit_exercise_metric(update: Update, context: ContextTypes.DEFAU
 
     # Извлекаем exercise_id из callback_data
     if query.data and query.data.startswith("edit_metric_"):
-        exercise_id = int(query.data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
         context.user_data['edit_exercise_id'] = exercise_id
     else:
         exercise_id = context.user_data.get('edit_exercise_id')
@@ -2615,7 +2739,15 @@ async def admin_edit_exercise_points(update: Update, context: ContextTypes.DEFAU
 
     # Извлекаем exercise_id из callback_data
     if query.data and query.data.startswith("edit_points_"):
-        exercise_id = int(query.data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
         context.user_data['edit_exercise_id'] = exercise_id
     else:
         exercise_id = context.user_data.get('edit_exercise_id')
@@ -2637,7 +2769,15 @@ async def admin_edit_exercise_diff(update: Update, context: ContextTypes.DEFAULT
 
     # Извлекаем exercise_id из callback_data
     if query.data and query.data.startswith("edit_diff_"):
-        exercise_id = int(query.data.split("_")[-1])
+        success, exercise_id, error = safe_int_convert(
+            query.data.split("_")[-1] if query.data else "",
+            "exercise_id",
+            min_value=1
+        )
+
+        if not success:
+            await query.answer(f"❌ {error}", show_alert=True)
+            return
         context.user_data['edit_exercise_id'] = exercise_id
     else:
         exercise_id = context.user_data.get('edit_exercise_id')
@@ -2803,7 +2943,15 @@ async def admin_edit_exercise_metric_select(update: Update, context: ContextType
     # Извлекаем metric и exercise_id из callback_data (формат: edit_metric_reps_123)
     parts = query.data.split('_')
     metric = parts[-2] if len(parts) >= 3 else parts[-1]  # reps, time, weight, distance
-    exercise_id = int(parts[-1]) if len(parts) >= 3 else context.user_data.get('edit_exercise_id')
+
+    # Безопасное получение exercise_id
+    if len(parts) >= 3 and parts[-1].isdigit():
+        success, exercise_id, error = safe_int_convert(parts[-1], "exercise_id", min_value=1)
+        if not success:
+            await query.edit_message_text(f"❌ {error}")
+            return ConversationHandler.END
+    else:
+        exercise_id = context.user_data.get('edit_exercise_id')
 
     if not exercise_id:
         await query.edit_message_text("❌ Ошибка: упражнение не выбрано")
@@ -2878,7 +3026,15 @@ async def admin_edit_exercise_diff_select(update: Update, context: ContextTypes.
     # Извлекаем diff и exercise_id из callback_data (формат: edit_diff_beginner_123)
     parts = query.data.split('_')
     diff = parts[-2] if len(parts) >= 3 else parts[-1]  # beginner, pro
-    exercise_id = int(parts[-1]) if len(parts) >= 3 else context.user_data.get('edit_exercise_id')
+
+    # Безопасное получение exercise_id
+    if len(parts) >= 3 and parts[-1].isdigit():
+        success, exercise_id, error = safe_int_convert(parts[-1], "exercise_id", min_value=1)
+        if not success:
+            await query.edit_message_text(f"❌ {error}")
+            return ConversationHandler.END
+    else:
+        exercise_id = context.user_data.get('edit_exercise_id')
 
     if not exercise_id:
         await query.edit_message_text("❌ Ошибка: упражнение не выбрано")
