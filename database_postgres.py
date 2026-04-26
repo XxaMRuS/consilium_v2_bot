@@ -6,10 +6,68 @@ import json
 import os
 import calendar
 import shutil
+import time
+import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
+
+# ДИАГНОСТИКА: Замер времени выполнения запросов
+SLOW_QUERY_THRESHOLD = 1.0  # Запросы дольше 1 секунды считаются медленными
+ENABLE_PERFORMANCE_LOGGING = False  # ОТКЛЮЧЕНО для производительности!
+
+def log_slow_operation(operation_name: str):
+    """Декоратор для логирования медленных операций"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if ENABLE_PERFORMANCE_LOGGING:
+                start_time = time.time()
+                try:
+                    result = func(*args, **kwargs)
+                    elapsed = time.time() - start_time
+                    if elapsed > SLOW_QUERY_THRESHOLD:
+                        logger.warning(f"⚠️ SLOW OPERATION {operation_name}: {elapsed:.2f}s")
+                    return result
+                except Exception as e:
+                    elapsed = time.time() - start_time
+                    logger.error(f"❌ ERROR in {operation_name} ({elapsed:.2f}s): {e}")
+                    raise
+            else:
+                return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# ASYNC WRAPPERS для критичных функций
+async def async_get_user_info(user_id):
+    """Async wrapper для get_user_info"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_user_info, user_id)
+
+async def async_get_user_scoreboard_total(user_id):
+    """Async wrapper для get_user_scoreboard_total"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_user_scoreboard_total, user_id)
+
+async def async_get_user_coin_balance(user_id):
+    """Async wrapper для get_user_coin_balance"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_user_coin_balance, user_id)
+
+async def async_get_fun_fuel_balance(user_id):
+    """Async wrapper для get_fun_fuel_balance"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_fun_fuel_balance, user_id)
+
+async def async_get_user_group(user_id):
+    """Async wrapper для get_user_group"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_user_group, user_id)
+
+async def async_get_user_pvp_history(user_id, limit=10):
+    """Async wrapper для get_user_pvp_history"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_user_pvp_history, user_id, limit)
 
 # PostgreSQL connection string from Render
 DB_URL = "postgresql://consilium_bot_db_user:SABK9whZ2uQUDKtBfTgBZameKa0jzWR9@dpg-d75aj2h5pdvs73ci216g-a.oregon-postgres.render.com/consilium_bot_db"
@@ -23,48 +81,93 @@ EXERCISES_JSON = "exercises.json"
 # Глобальный пул соединений для оптимизации подключений к БД
 _connection_pool = None
 
-def init_connection_pool(minconn=3, maxconn=20):
+def init_connection_pool(minconn=5, maxconn=20):
     """
     Инициализирует пул соединений с PostgreSQL.
-    Увеличены значения для лучшей производительности при нагрузке.
+    Умеренные размеры для надежной работы.
     """
     global _connection_pool
-    try:
-        _connection_pool = psycopg2.pool.SimpleConnectionPool(
-            minconn=minconn,  # Увеличено с 1 до 3
-            maxconn=maxconn,  # Увеличено с 10 до 20
-            dsn=DB_URL,
-            connect_timeout=5,  # Уменьшено с 10 до 5 для быстрого отказа
-            options="-c statement_timeout=30000"  # 30 сек timeout для запросов
-        )
-        logger.info(f"✅ Connection pool initialized: {minconn}-{maxconn} connections")
-        return True
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize connection pool: {e}")
-        return False
+    max_retries = 3
+    retry_delay = 2
+
+    for attempt in range(max_retries):
+        try:
+            _connection_pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=minconn,  # Уменьшено для надежности
+                maxconn=maxconn,  # Уменьшено для стабильности
+                dsn=DB_URL,
+                connect_timeout=10,  # Увеличен для надежной инициализации
+                options="-c statement_timeout=10000"  # 10 сек timeout
+            )
+            logger.info(f"✅ Connection pool initialized: {minconn}-{maxconn} connections")
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Pool init attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"❌ Failed to initialize connection pool after {max_retries} attempts")
+                logger.warning("⚠️ Working without connection pool (fallback mode)")
+                return False
 
 def get_db_connection():
     """Возвращает соединение из пула или создаёт новое если пул не инициализирован."""
     global _connection_pool
+    start_time = time.time()
+
     if _connection_pool:
         try:
-            return _connection_pool.getconn()
+            conn = _connection_pool.getconn()
+
+            # Проверяем, что соединение открыто
+            if conn.closed:
+                logger.warning("⚠️ Got closed connection from pool, putting it back and getting new one")
+                _connection_pool.putconn(conn, close=True)
+                conn = _connection_pool.getconn()
+
+            elapsed = time.time() - start_time
+            if elapsed > SLOW_QUERY_THRESHOLD:
+                logger.warning(f"⚠️ SLOW CONNECTION GET: {elapsed:.2f}s")
+            return conn
         except Exception as e:
             logger.error(f"❌ Failed to get connection from pool: {e}")
             # Fallback: создаём новое соединение
+            logger.warning("⚠️ Using direct connection (pool unavailable)")
             return psycopg2.connect(DB_URL, connect_timeout=10)
     else:
         # Если пул не инициализирован, создаём прямое соединение
-        return psycopg2.connect(DB_URL, connect_timeout=10)
+        logger.warning("⚠️ Pool not initialized, using direct connection")
+        conn = psycopg2.connect(DB_URL, connect_timeout=10)
+        elapsed = time.time() - start_time
+        if elapsed > SLOW_QUERY_THRESHOLD:
+            logger.warning(f"⚠️ SLOW DIRECT CONNECTION: {elapsed:.2f}s")
+        return conn
 
 def release_db_connection(conn):
-    """Возвращает соединение обратно в пул."""
+    """Возвращает соединение обратно в пул или закрывает его если это прямое соединение."""
     global _connection_pool
-    if _connection_pool and conn:
+    if not conn:
+        return
+
+    if _connection_pool:
         try:
+            # Проверяем, из ли этого пула соединение
+            # Если это прямое соединение (не из пула), putconn вызовет ошибку
             _connection_pool.putconn(conn)
         except Exception as e:
-            logger.error(f"❌ Failed to return connection to pool: {e}")
+            # Если не получается вернуть в пул, значит это прямое соединение
+            # Закрываем его вручную
+            try:
+                conn.close()
+            except:
+                pass  # Соединение уже закрыто
+    else:
+        # Если пула нет, просто закрываем соединение
+        try:
+            conn.close()
+        except:
+            pass  # Соединение уже закрыто
 
 def close_all_connections():
     """Закрывает все соединения в пуле."""
@@ -76,11 +179,100 @@ def close_all_connections():
         except Exception as e:
             logger.error(f"❌ Failed to close connections: {e}")
 
+
+def test_database_connection():
+    """Проверяет работу базы данных и возвращает статистику пула."""
+    global _connection_pool
+    try:
+        if not _connection_pool:
+            return False, "Пул не инициализирован"
+
+        # Проверяем количество соединений в пуле
+        pool_min = _connection_pool.minconn
+        pool_max = _connection_pool.maxconn
+
+        # Пробуем получить соединение
+        conn = get_db_connection()
+        if conn:
+            release_db_connection(conn)
+
+            return True, f"✅ БД работает! Пул: {pool_min}-{pool_max} соединений"
+        else:
+            return False, "❌ Не удалось получить соединение"
+    except Exception as e:
+        return False, f"❌ Ошибка: {e}"
+
 def dict_cursor(conn):
     """Возвращает cursor, который возвращает результаты как словари."""
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 # ==================== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ====================
+
+def optimize_database():
+    """
+    Создает недостающие индексы для оптимизации производительности.
+    Можно вызвать для оптимизации уже существующей базы данных.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Индексы для scoreboard (только для существующих колонок)
+        try:
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_scoreboard_user_id ON scoreboard(user_id)")
+            logger.info("✅ Индекс idx_scoreboard_user_id создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для scoreboard.user_id: {e}")
+
+        try:
+            # Проверяем существование колонки exercise_id
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns
+                    WHERE table_name = 'scoreboard' AND column_name = 'exercise_id'
+                )
+            """)
+            if cur.fetchone()[0]:
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_scoreboard_exercise_id ON scoreboard(exercise_id)")
+                logger.info("✅ Индекс idx_scoreboard_exercise_id создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для scoreboard.exercise_id: {e}")
+
+        # Индексы для pvp_history
+        try:
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_pvp_history_user_id ON pvp_history(user_id)")
+            logger.info("✅ Индекс idx_pvp_history_user_id создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для pvp_history.user_id: {e}")
+
+        try:
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_pvp_history_opponent_id ON pvp_history(opponent_id)")
+            logger.info("✅ Индекс idx_pvp_history_opponent_id создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для pvp_history.opponent_id: {e}")
+
+        try:
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_pvp_history_challenge_id ON pvp_history(challenge_id)")
+            logger.info("✅ Индекс idx_pvp_history_challenge_id создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для pvp_history.challenge_id: {e}")
+
+        # Индексы для users
+        try:
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+            logger.info("✅ Индекс idx_users_username создан")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось создать индекс для users.username: {e}")
+
+        conn.commit()
+        logger.info("🚀 Оптимизация базы данных завершена!")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при оптимизации БД: {e}")
+        conn.rollback()
+    finally:
+        release_db_connection(conn)
+
 
 def init_database():
     """Инициализирует базу данных — создаёт таблицы users, pvp_challenges, pvp_history."""
@@ -176,6 +368,10 @@ def init_database():
 
         conn.commit()
         logger.info("init_database: таблицы созданы/проверены")
+
+        # ОПТИМИЗАЦИЯ: Создаем индексы для быстродействия
+        optimize_database()
+
         return True
     except Exception as e:
         logger.error(f"Ошибка init_database: {e}")
@@ -191,6 +387,9 @@ def backup_database():
 
 def init_db():
     """Инициализирует базу данных: создаёт все таблицы, если их нет."""
+    # СНАЧАЛА инициализируем connection pool!
+    init_connection_pool(minconn=5, maxconn=20)
+
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -536,7 +735,14 @@ def init_db():
     pvp_columns = {row[0] for row in cur.fetchall()}
     for col_name, col_def in [('bet', 'INTEGER DEFAULT 0'),
                                ('challenger_score_start', 'INTEGER DEFAULT 0'),
-                               ('opponent_score_start', 'INTEGER DEFAULT 0')]:
+                               ('opponent_score_start', 'INTEGER DEFAULT 0'),
+                               ('exercise_id', 'INTEGER'),
+                               ('complex_id', 'INTEGER'),
+                               ('challenger_result', 'VARCHAR(50)'),
+                               ('opponent_result', 'VARCHAR(50)'),
+                               ('challenger_confirmed', 'BOOLEAN DEFAULT FALSE'),
+                               ('opponent_confirmed', 'BOOLEAN DEFAULT FALSE'),
+                               ('challenge_type', "VARCHAR(20) DEFAULT 'default'")]:
         if col_name not in pvp_columns:
             cur.execute(f"ALTER TABLE pvp_challenges ADD COLUMN {col_name} {col_def}")
     logger.info("Таблица 'pvp_challenges' создана/обновлена.")
@@ -581,7 +787,7 @@ def init_db():
     logger.info("Таблица 'pvp_settings' создана с настройками по умолчанию")
 
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     logger.info("База данных инициализирована.")
     load_exercises_from_json_if_empty()
 
@@ -592,7 +798,7 @@ def load_exercises_from_json_if_empty():
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM exercises")
     count = cur.fetchone()[0]
-    conn.close()
+    release_db_connection(conn)
 
     if count == 0:
         if not os.path.exists(EXERCISES_JSON):
@@ -702,7 +908,7 @@ def get_user_info(user_id):
     """, (user_id,))
 
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)  # ИСПРАВЛЕНО: возвращаем в пул!
 
     # Сохраняем в кэш
     if row:
@@ -728,7 +934,7 @@ def get_user_by_username(username):
     """, (username, "@" + username))
 
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)  # ИСПРАВЛЕНО: возвращаем в пул!
 
     return row
 
@@ -1038,33 +1244,53 @@ def add_workout(user_id, exercise_id=None, complex_id=None, result_value="", vid
     """, (user_id, exercise_id, complex_id, result_value, video_link, user_level, comment))
     workout_id = cur.fetchone()[0]
 
-    # Начисляем очки пользователю за тренировку
-    pts = 0
-    if exercise_id:
-        cur.execute("SELECT points FROM exercises WHERE id = %s", (exercise_id,))
-        row = cur.fetchone()
-        if row:
-            pts = row[0] or 0
-    elif complex_id:
-        cur.execute("SELECT points FROM complexes WHERE id = %s", (complex_id,))
-        row = cur.fetchone()
-        if row:
-            pts = row[0] or 0
-    if pts > 0:
-        cur.execute("UPDATE users SET score = score + %s WHERE telegram_id = %s", (pts, user_id))
+    # Проверяем, есть ли уже выполнения этого упражнения/комплекса сегодня
+    cur.execute("""
+        SELECT COUNT(*) FROM workouts
+        WHERE user_id = %s
+        AND (exercise_id = %s OR complex_id = %s)
+        AND DATE(date) = CURRENT_DATE
+        AND id != %s
+    """, (user_id, exercise_id, complex_id, workout_id))
+    today_count = cur.fetchone()[0]
 
-    # Начисляем FruN Fuel за тренировку (+10 FF)
-    try:
-        add_coins(user_id, 10, 'workout', '💪 За тренировку')
-        logger.info(f"Начислено +10 FF пользователю {user_id} за тренировку")
-    except Exception as e:
-        logger.error(f"Ошибка начисления FruN Fuel за тренировку: {e}")
+    # Начисляем очки и FF только за ПЕРВОЕ выполнение в день
+    if today_count == 0:
+        # Начисляем очки пользователю за тренировку
+        pts = 0
+        if exercise_id:
+            cur.execute("SELECT points FROM exercises WHERE id = %s", (exercise_id,))
+            row = cur.fetchone()
+            if row:
+                pts = row[0] or 0
+        elif complex_id:
+            cur.execute("SELECT points FROM complexes WHERE id = %s", (complex_id,))
+            row = cur.fetchone()
+            if row:
+                pts = row[0] or 0
+
+        # Начисляем очки (если первое выполнение сегодня)
+        if pts > 0:
+            try:
+                cur.execute("UPDATE users SET score = score + %s WHERE telegram_id = %s", (pts, user_id))
+                logger.info(f"✅ Начислено +{pts} очков пользователю {user_id} за первое выполнение сегодня")
+            except Exception as score_error:
+                logger.error(f"❌ Ошибка начисления очков: {score_error}")
+
+        # Начисляем FruN Fuel за тренировку (+10) только за первое выполнение
+        try:
+            add_fun_fuel(user_id, 10, '💪 За тренировку')
+            logger.info(f"✅ Начислено +10 FruNFuel пользователю {user_id} за тренировку")
+        except Exception as e:
+            logger.error(f"❌ Ошибка начисления FruNFuel за тренировку: {e}")
+    else:
+        logger.info(f"⚠️ Пользователь {user_id} уже выполнял это упражнение/комплекс сегодня ({today_count} раз). Очки и FF не начисляются.")
 
     conn.commit()
     new_achievements = check_and_award_achievements(user_id, conn)
     if metric is not None and exercise_id is not None:
         update_personal_best(user_id, exercise_id, result_value, metric, conn, notify_record_callback)
-    conn.close()
+    release_db_connection(conn)
 
     # Инвалидируем кэш пользователя (изменились очки и достижения)
     from cache_manager import DataCache
@@ -1143,7 +1369,7 @@ def get_user_workouts(user_id, limit=20):
         LIMIT %s
     """, (user_id, limit))
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1172,7 +1398,7 @@ def get_user_stats(user_id, period=None, level=None):
             query += " AND EXTRACT(YEAR FROM w.date) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"
     cur.execute(query, params)
     result = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return result
 
 
@@ -1235,7 +1461,7 @@ def get_leaderboard_from_scoreboard(limit=10):
             LIMIT %s
         """, (limit,))
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1277,7 +1503,7 @@ def get_all_exercises():
     cur = conn.cursor()
     cur.execute("SELECT id, name, metric, points, week, difficulty FROM exercises ORDER BY name")
     exercises = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
 
     # Сохраняем в кэш на 10 минут
     DataCache.set_exercises(exercises, ttl=600)
@@ -1285,13 +1511,252 @@ def get_all_exercises():
     return exercises
 
 
+def get_exercises_for_pvp():
+    """Возвращает активные упражнения для PvP вызовов."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, name, metric, difficulty
+        FROM exercises
+        ORDER BY difficulty, name
+    """)
+
+    rows = cur.fetchall()
+    release_db_connection(conn)
+
+    return rows
+
+
+def get_exercise_name_by_id(exercise_id):
+    """Возвращает название упражнения по его ID. Работает и для exercises, и для complexes."""
+    if not exercise_id:
+        return None
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Сначала проверяем exercises
+        cur.execute("""
+            SELECT name FROM exercises WHERE id = %s
+        """, (exercise_id,))
+        result = cur.fetchone()
+
+        # Если не нашли в exercises, проверяем complexes
+        if not result:
+            cur.execute("""
+                SELECT name FROM complexes WHERE id = %s
+            """, (exercise_id,))
+            result = cur.fetchone()
+
+        release_db_connection(conn)
+        return result[0] if result else None
+    except Exception as e:
+        logger.error(f"Ошибка получения названия упражнения/комплекса {exercise_id}: {e}")
+        release_db_connection(conn)
+        return None
+
+
+def get_complex_name_by_id(complex_id):
+    """Возвращает название комплекса по его ID."""
+    if not complex_id:
+        return None
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT name FROM complexes WHERE id = %s
+        """, (complex_id,))
+        result = cur.fetchone()
+        release_db_connection(conn)
+
+        return result[0] if result else None
+    except Exception as e:
+        logger.error(f"Ошибка получения названия комплекса {complex_id}: {e}")
+        release_db_connection(conn)
+        return None
+
+
+def get_complexes_for_pvp():
+    """Возвращает комплексы для PvP вызовов."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, name, difficulty
+        FROM complexes
+        ORDER BY difficulty, name
+    """)
+
+    rows = cur.fetchall()
+    release_db_connection(conn)
+
+    return rows
+
+
+def force_finish_pvp_challenge(challenge_id):
+    """Принудительно завершает PvP-вызов и определяет победителя по тренировочным очкам.
+
+    Args:
+        challenge_id: ID вызова
+
+    Returns:
+        tuple: (success, message, winner_id, challenger_gain, opponent_gain)
+    """
+    return complete_pvp_challenge(challenge_id)
+
+
+def submit_pvp_exercise_result(challenge_id, user_id, result_value):
+    """Загружает или обновляет результат участника в PvP-вызове на упражнение.
+
+    Args:
+        challenge_id: ID вызова
+        user_id: ID пользователя
+        result_value: Результат (количество раз, время и т.д.)
+
+    Returns:
+        tuple: (success, message)
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Проверяем существование вызова
+        cur.execute("""
+            SELECT id, challenger_id, opponent_id, status, exercise_id, challenge_type
+            FROM pvp_challenges
+            WHERE id = %s AND status IN ('active', 'pending')
+        """, (challenge_id,))
+
+        challenge = cur.fetchone()
+        if not challenge:
+            release_db_connection(conn)
+            return False, "Вызов не найден или уже завершён"
+
+        db_ch_id, challenger_id, opponent_id, status, exercise_id, challenge_type = challenge
+
+        # Проверяем, что пользователь участвует в вызове
+        if user_id != challenger_id and user_id != opponent_id:
+            release_db_connection(conn)
+            return False, "Вы не участвуете в этом вызове"
+
+        # Проверяем, что это вызов на упражнение
+        if challenge_type != 'exercise':
+            release_db_connection(conn)
+            return False, "Этот вызов не на упражнение"
+
+        # Определяем какое поле обновлять
+        if user_id == challenger_id:
+            result_field = 'challenger_result'
+        else:
+            result_field = 'opponent_result'
+
+        # Обновляем результат
+        cur.execute(f"""
+            UPDATE pvp_challenges
+            SET {result_field} = %s
+            WHERE id = %s
+        """, (str(result_value), challenge_id))
+
+        conn.commit()
+        release_db_connection(conn)
+
+        return True, f"Результат обновлён: {result_value}"
+
+    except Exception as e:
+        logger.error(f"Ошибка сохранения результата: {e}")
+        release_db_connection(conn)
+        return False, f"Ошибка: {e}"
+
+
+def confirm_pvp_challenge_result(challenge_id, user_id):
+    """Подтверждает результат участника (больше не будет изменять).
+
+    Args:
+        challenge_id: ID вызова
+        user_id: ID пользователя
+
+    Returns:
+        tuple: (success, message, both_confirmed)
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Получаем информацию о вызове
+        cur.execute("""
+            SELECT id, challenger_id, opponent_id, status,
+                   challenger_confirmed, opponent_confirmed,
+                   challenger_result, opponent_result
+            FROM pvp_challenges
+            WHERE id = %s AND status IN ('active', 'pending')
+        """, (challenge_id,))
+
+        challenge = cur.fetchone()
+        if not challenge:
+            release_db_connection(conn)
+            return False, "Вызов не найден или уже завершён", False
+
+        db_ch_id, challenger_id, opponent_id, status, ch_confirmed, op_confirmed, ch_result, op_result = challenge
+
+        # Проверяем, что пользователь участвует в вызове
+        if user_id != challenger_id and user_id != opponent_id:
+            release_db_connection(conn)
+            return False, "Вы не участвуете в этом вызове", False
+
+        # Проверяем, что результат загружен
+        if user_id == challenger_id and not ch_result:
+            release_db_connection(conn)
+            return False, "Сначала загрузите свой результат!", False
+
+        if user_id == opponent_id and not op_result:
+            release_db_connection(conn)
+            return False, "Сначала загрузите свой результат!", False
+
+        # Подтверждаем
+        if user_id == challenger_id:
+            cur.execute("""
+                UPDATE pvp_challenges
+                SET challenger_confirmed = TRUE
+                WHERE id = %s
+            """, (challenge_id,))
+        else:
+            cur.execute("""
+                UPDATE pvp_challenges
+                SET opponent_confirmed = TRUE
+                WHERE id = %s
+            """, (challenge_id,))
+
+        conn.commit()
+        release_db_connection(conn)
+
+        # Проверяем, оба ли подтвердили
+        cur.execute("""
+            SELECT challenger_confirmed, opponent_confirmed
+            FROM pvp_challenges
+            WHERE id = %s
+        """, (challenge_id,))
+
+        confirmed = cur.fetchone()
+        both_confirmed = confirmed[0] and confirmed[1]
+
+        return True, "Результат подтверждён!", both_confirmed
+
+    except Exception as e:
+        logger.error(f"Ошибка подтверждения результата: {e}")
+        release_db_connection(conn)
+        return False, f"Ошибка: {e}", False
+
 def get_exercise_by_id(exercise_id):
     """Возвращает упражнение по ID."""
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT id, name, description, metric, points, week, difficulty FROM exercises WHERE id = %s", (exercise_id,))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return row
 
 
@@ -1321,7 +1786,7 @@ def delete_exercise(exercise_id):
     cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
     deleted = cur.rowcount > 0
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     return deleted
 
 
@@ -1372,7 +1837,7 @@ def update_exercise(exercise_id, name=None, description=None, metric=None, point
         params.append(difficulty)
 
     if not updates:
-        conn.close()
+        release_db_connection(conn)
         return False  # Нечего обновлять
 
     # Добавляем exercise_id в параметры
@@ -1387,7 +1852,7 @@ def update_exercise(exercise_id, name=None, description=None, metric=None, point
         conn.rollback()
         raise e
     finally:
-        conn.close()
+        release_db_connection(conn)
 
     # Инвалидируем кэш упражнений если они были обновлены
     if updated:
@@ -1403,7 +1868,7 @@ def set_exercise_week(exercise_id, week):
     cur = conn.cursor()
     cur.execute("UPDATE exercises SET week = %s WHERE id = %s", (week, exercise_id))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def get_all_complexes(active_only=True):
@@ -1438,14 +1903,14 @@ def get_complex_exercises(complex_id):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT ce.id, ce.exercise_id, e.name, e.metric, ce.reps
+        SELECT ce.id, ce.exercise_id, e.name, e.description, e.metric, ce.reps, e.points
         FROM complex_exercises ce
         JOIN exercises e ON ce.exercise_id = e.id
         WHERE ce.complex_id = %s
         ORDER BY ce.order_index
     """, (complex_id,))
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1481,7 +1946,7 @@ def add_complex_exercise(complex_id, exercise_id, reps, order_index=None):
         VALUES (%s, %s, %s, %s)
     """, (complex_id, exercise_id, reps, order_index))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def delete_complex(complex_id):
@@ -1524,7 +1989,7 @@ def get_active_challenges():
         ORDER BY c.start_date
     """)
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1556,7 +2021,7 @@ def get_challenge_by_id(challenge_id):
         WHERE id = %s
     """, (challenge_id,))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return row
 
 
@@ -1567,7 +2032,7 @@ def delete_challenge(challenge_id):
     cur.execute("DELETE FROM challenges WHERE id = %s", (challenge_id,))
     deleted = cur.rowcount > 0
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     return deleted
 
 
@@ -1582,7 +2047,7 @@ def update_challenge_progress(user_id, challenge_id, new_value):
         DO UPDATE SET current_value = EXCLUDED.current_value, updated_at = CURRENT_TIMESTAMP
     """, (user_id, challenge_id, new_value))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def check_challenge_completion(user_id, challenge_id, target_value, metric):
@@ -1594,7 +2059,7 @@ def check_challenge_completion(user_id, challenge_id, target_value, metric):
         WHERE user_id = %s AND challenge_id = %s
     """, (user_id, challenge_id))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     if not row:
         return False
     current = row[0]
@@ -1619,7 +2084,7 @@ def get_user_challenges(user_id):
           AND CURRENT_DATE BETWEEN c.start_date AND c.end_date
     """, (user_id,))
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1715,7 +2180,7 @@ def get_challenge_name(challenge_id):
     cur = conn.cursor()
     cur.execute("SELECT name FROM challenges WHERE id = %s", (challenge_id,))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return row[0] if row else None
 
 
@@ -1740,7 +2205,7 @@ def get_user_challenges_with_details(user_id):
         ORDER BY c.start_date
     """, (user_id,))
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
     return rows
 
 
@@ -1751,7 +2216,7 @@ def leave_challenge(user_id, challenge_id):
     cur.execute("DELETE FROM user_challenges WHERE user_id = %s AND challenge_id = %s", (user_id, challenge_id))
     cur.execute("DELETE FROM user_challenge_progress WHERE user_id = %s AND challenge_id = %s", (user_id, challenge_id))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def add_exercises_to_challenge(challenge_id, exercise_ids):
@@ -2316,7 +2781,7 @@ def get_user_activity_calendar(user_id, year, month):
     """, (user_id, year, month))
 
     rows = cursor.fetchall()
-    conn.close()
+    release_db_connection(conn)
 
     days_in_month = calendar.monthrange(year, month)[1]
     result = []
@@ -2357,7 +2822,7 @@ def save_published_post(entity_type, entity_id, channel_id, message_id):
     cur = conn.cursor()
     cur.execute("INSERT INTO published_posts (entity_type, entity_id, channel_id, message_id) VALUES (%s, %s, %s, %s)", (entity_type, entity_id, channel_id, message_id))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def get_published_post_by_message_id(message_id):
@@ -2366,7 +2831,7 @@ def get_published_post_by_message_id(message_id):
     cur = conn.cursor()
     cur.execute("SELECT entity_type, entity_id, channel_id, message_id FROM published_posts WHERE message_id = %s", (message_id,))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return row
 
 
@@ -2450,8 +2915,17 @@ def create_challenge_with_bet(challenger_id, opponent_id, bet, duration_hours=24
         release_db_connection(conn)
 
 
-def create_pvp_challenge(challenger_id, opponent_id, duration_hours=24, bet=0):
-    """Создаёт новый PvP-вызов между двумя пользователями с опциональной ставкой."""
+def create_pvp_challenge(challenger_id, opponent_id, duration_hours=24, bet=0, exercise_id=None, challenge_type='default'):
+    """Создаёт новый PvP-вызов между двумя пользователями.
+
+    Args:
+        challenger_id: ID вызывающего
+        opponent_id: ID вызываемого
+        duration_hours: Длительность в часах (по умолчанию 24)
+        bet: Ставка (по умолчанию 0)
+        exercise_id: ID упражнения (если вызов на упражнение)
+        challenge_type: Тип вызова ('default', 'exercise', 'complex')
+    """
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -2471,10 +2945,10 @@ def create_pvp_challenge(challenger_id, opponent_id, duration_hours=24, bet=0):
 
         cur.execute("""
             INSERT INTO pvp_challenges
-            (challenger_id, opponent_id, start_time, end_time, status, bet)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (challenger_id, opponent_id, start_time, end_time, status, bet, exercise_id, challenge_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (challenger_id, opponent_id, start_time, end_time, 'pending', bet))
+        """, (challenger_id, opponent_id, start_time, end_time, 'pending', bet, exercise_id, challenge_type))
 
         challenge_id = cur.fetchone()[0]
         conn.commit()
@@ -2536,16 +3010,50 @@ def accept_pvp_challenge(challenge_id, opponent_id):
 
 
 def reject_pvp_challenge(challenge_id, opponent_id):
-    """Отклоняет PvP-вызов."""
+    """Отклоняет PvP-вызов. Тот, кто отклонил - проигрывает и теряет ставку."""
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
+        # Получаем информацию о вызове
         cur.execute("""
-            UPDATE pvp_challenges
-            SET status = 'cancelled'
+            SELECT challenger_id, opponent_id, bet
+            FROM pvp_challenges
             WHERE id = %s AND opponent_id = %s AND status = 'pending'
         """, (challenge_id, opponent_id))
+
+        challenge = cur.fetchone()
+        if not challenge:
+            release_db_connection(conn)
+            return False
+
+        challenger_id, _, bet = challenge
+
+        # Тот, кто отменил (opponent) - проигрывает
+        # Списываем ставку у opponent_id и начисляем challenger_id
+        if bet > 0:
+            # Списываем у того, кто отменил
+            cur.execute("""
+                UPDATE scoreboard
+                SET points = points - %s
+                WHERE user_id = %s
+            """, (bet, opponent_id))
+
+            # Начисляем сопернику
+            cur.execute("""
+                UPDATE scoreboard
+                SET points = points + %s
+                WHERE user_id = %s
+            """, (bet, challenger_id))
+
+        # Обновляем статус вызова
+        cur.execute("""
+            UPDATE pvp_challenges
+            SET status = 'rejected',
+                winner_id = %s,
+                end_time = CURRENT_TIMESTAMP
+            WHERE id = %s AND opponent_id = %s AND status = 'pending'
+        """, (challenger_id, challenge_id, opponent_id))
 
         if cur.rowcount == 0:
             release_db_connection(conn)
@@ -2556,12 +3064,13 @@ def reject_pvp_challenge(challenge_id, opponent_id):
         return True
     except Exception as e:
         logger.error(f"Ошибка отклонения PvP-вызова: {e}")
+        conn.rollback()
         release_db_connection(conn)
         return False
 
 
 def cancel_pvp_challenge_and_refund(challenge_id, user_id):
-    """Отменяет PvP-вызов и возвращает ставки обоим участникам.
+    """Отменяет PvP-вызов и возвращает ставки с 20% штрафом в банк.
 
     Args:
         challenge_id: ID вызова
@@ -2606,18 +3115,32 @@ def cancel_pvp_challenge_and_refund(challenge_id, user_id):
             WHERE id = %s
         """, (challenge_id,))
 
-        # Возвращаем ставки обоим участникам
+        # Возвращаем 80% ставок обоим участникам (20% штраф в банк)
         if bet > 0:
+            refund_amount = int(bet * 0.8)  # 80% от ставки
+            bank_fee = bet - refund_amount     # 20% штраф
+
+            # Возвращаем 80% каждому участнику
             cur.execute("""
-                UPDATE users
-                SET score = score + %s
-                WHERE telegram_id IN (%s, %s)
-            """, (bet, challenger_id, opponent_id))
+                UPDATE scoreboard
+                SET points = points + %s
+                WHERE user_id = %s
+            """, (refund_amount, challenger_id))
+
+            cur.execute("""
+                UPDATE scoreboard
+                SET points = points + %s
+                WHERE user_id = %s
+            """, (refund_amount, opponent_id))
+
+            logger.info(f"💰 PvP CANCEL: challenge_id={challenge_id}, bet={bet}, refund={refund_amount}, bank_fee={bank_fee}")
 
         conn.commit()
 
+        refund_amount = int(bet * 0.8) if bet > 0 else 0
+        message = f"Вызов отменён. Возвращено {refund_amount} очков (20% штраф)"
         release_db_connection(conn)
-        return True, "Вызов отменён", challenger_id, opponent_id, bet
+        return True, message, challenger_id, opponent_id, bet
 
     except Exception as e:
         logger.error(f"Ошибка отмены PvP-вызова: {e}")
@@ -2628,19 +3151,29 @@ def cancel_pvp_challenge_and_refund(challenge_id, user_id):
 def get_pvp_challenge(challenge_id):
     """Возвращает информацию о PvP-вызове."""
     conn = get_db_connection()
-    cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, challenger_id, opponent_id, start_time, end_time, status,
-               challenger_score, opponent_score, winner_id
-        FROM pvp_challenges
-        WHERE id = %s
-    """, (challenge_id,))
+    try:
+        # Проверяем, что соединение открыто
+        if conn.closed:
+            logger.warning(f"⚠️ Соединение закрыто, получаем новое для get_pvp_challenge(#{challenge_id})")
+            conn = get_db_connection()
 
-    row = cur.fetchone()
-    conn.close()
+        cur = conn.cursor()
 
-    return row
+        cur.execute("""
+            SELECT id, challenger_id, opponent_id, start_time, end_time, status,
+                   challenger_score, opponent_score, winner_id, bet,
+                   exercise_id, challenge_type,
+                   challenger_result, opponent_result,
+                   challenger_confirmed, opponent_confirmed
+            FROM pvp_challenges
+            WHERE id = %s
+        """, (challenge_id,))
+
+        row = cur.fetchone()
+        return row
+    finally:
+        release_db_connection(conn)
 
 
 def get_user_active_challenge(user_id):
@@ -2650,7 +3183,10 @@ def get_user_active_challenge(user_id):
 
     cur.execute("""
         SELECT id, challenger_id, opponent_id, start_time, end_time, status,
-               challenger_score, opponent_score, winner_id
+               challenger_score, opponent_score, winner_id, bet,
+               exercise_id, challenge_type,
+               challenger_result, opponent_result,
+               challenger_confirmed, opponent_confirmed
         FROM pvp_challenges
         WHERE (challenger_id = %s OR opponent_id = %s)
         AND status IN ('pending', 'active')
@@ -2659,28 +3195,195 @@ def get_user_active_challenge(user_id):
     """, (user_id, user_id))
 
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
 
     return row
 
 
 def complete_pvp_challenge(challenge_id):
-    """Завершает PvP-вызов: определяет победителя по приросту очков, распределяет ставку."""
+    """Завершает PvP-вызов: определяет победителя по типу вызова."""
+    logger.info(f"🔄 [START] complete_pvp_challenge(#{challenge_id})")
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT challenger_id, opponent_id, start_time, end_time,
-                   bet, challenger_score_start, opponent_score_start
+            SELECT id, challenger_id, opponent_id, start_time, end_time,
+                   bet, challenger_score_start, opponent_score_start,
+                   exercise_id, challenge_type, challenger_confirmed, opponent_confirmed,
+                   challenger_result, opponent_result
             FROM pvp_challenges
-            WHERE id = %s AND status = 'active'
+            WHERE id = %s AND status IN ('active', 'pending')
         """, (challenge_id,))
         row = cur.fetchone()
+
+        logger.info(f"🔄 [QUERY] Got row: {row is not None}")
+
         if not row:
+            logger.warning(f"⚠️ Вызов #{challenge_id} не найден или уже завершён")
             return False, None, 0, 0
 
-        challenger_id, opponent_id, start_time, end_time, bet, \
-            ch_start, op_start = row
+        # Распаковываем все 14 значений (id игнорируем)
+        _, challenger_id, opponent_id, start_time, end_time, bet, \
+            ch_start, op_start, exercise_id, challenge_type, \
+            ch_confirmed, op_confirmed, ch_result, op_result = row
+
+        # Если это вызов на упражнение
+        if challenge_type == 'exercise':
+            logger.info(f"🔄 [EXERCISE] Завершение вызова на упражнение #{challenge_id}")
+
+            # Проверяем, загружены ли результаты
+            if not ch_result or not op_result:
+                logger.warning(f"⚠️ [EXERCISE_FALLBACK] Результаты не загружены, используем тренировочные очки")
+                # Fallback: завершаем как обычный вызов по тренировочным очкам
+                return _complete_default_challenge(
+                    challenge_id, challenger_id, opponent_id, start_time, end_time,
+                    bet, ch_start, op_start
+                )
+
+            return _complete_exercise_challenge(
+                challenge_id, challenger_id, opponent_id, bet,
+                exercise_id, ch_result, op_result, ch_confirmed, op_confirmed
+            )
+        else:
+            # Обычный вызов - определяем по тренировочным очкам
+            logger.info(f"🔄 [DEFAULT] Завершение обычного вызова #{challenge_id}")
+            return _complete_default_challenge(
+                challenge_id, challenger_id, opponent_id, start_time, end_time,
+                bet, ch_start, op_start
+            )
+
+    except Exception as e:
+        import traceback
+        logger.error(f"❌ Ошибка завершения PvP-вызова #{challenge_id}: {e}")
+        logger.error(f"   Traceback:\n{traceback.format_exc()}")
+        release_db_connection(conn)
+        return False, None, 0, 0
+
+
+def _complete_exercise_challenge(challenge_id, challenger_id, opponent_id, bet,
+                                exercise_id, ch_result, op_result, ch_confirmed, op_confirmed):
+    """Завершает вызов на упражнение - сравнивает результаты."""
+    logger.info(f"🔄 [EX_START] _complete_exercise_challenge(#{challenge_id})")
+    logger.info(f"   ch_result={ch_result}, op_result={op_result}, bet={bet}")
+
+    conn = get_db_connection()
+
+    # Проверяем соединение
+    if conn.closed:
+        logger.error(f"❌ [EX_ERROR] Соединение закрыто сразу после получения!")
+        return False, None, 0, 0
+
+    try:
+        cur = conn.cursor()
+
+        # Проверяем, оба ли подтвердили результаты
+        if not ch_result or not op_result:
+            logger.warning(f"⚠️ [EX_SKIP] Результаты не загружены: ch_result={ch_result}, op_result={op_result}")
+            release_db_connection(conn)
+            return False, None, 0, 0
+
+        # Преобразуем результаты в числа
+        try:
+            ch_value = float(ch_result) if ch_result else 0
+            op_value = float(op_result) if op_result else 0
+        except (ValueError, TypeError):
+            ch_value = 0
+            op_value = 0
+
+        # Определяем победителя (больше значение = победитель)
+        if ch_value > op_value:
+            winner_id = challenger_id
+            winner_margin = int(ch_value - op_value)
+        elif op_value > ch_value:
+            winner_id = opponent_id
+            winner_margin = int(op_value - ch_value)
+        else:
+            winner_id = None  # Ничья
+            winner_margin = 0
+
+        # Распределяем ставку
+        if winner_id is None:
+            # Ничья - возврат ставок
+            try:
+                refund_fun_fuel(challenger_id, bet, "Возврат ставки (ничья в упражнении)")
+                refund_fun_fuel(opponent_id, bet, "Возврат ставки (ничья в упражнении)")
+            except Exception as refund_error:
+                logger.warning(f"⚠️ Ошибка возврата ставок: {refund_error}")
+            ch_change = 0
+            op_change = 0
+            ch_result_str = 'draw'
+            op_result_str = 'draw'
+        elif winner_id == challenger_id:
+            # Победа вызывающего
+            try:
+                add_fun_fuel(challenger_id, bet * 2, f'Выигрыш в PvP упражнении (вызов #{challenge_id})')
+            except Exception as ff_error:
+                logger.warning(f"⚠️ Ошибка начисления победителю: {ff_error}")
+            ch_change = bet
+            op_change = -bet
+            ch_result_str = 'win'
+            op_result_str = 'lose'
+        else:
+            # Победа соперника
+            try:
+                add_fun_fuel(opponent_id, bet * 2, f'Выигрыш в PvP упражнении (вызов #{challenge_id})')
+            except Exception as ff_error:
+                logger.warning(f"⚠️ Ошибка начисления победителю: {ff_error}")
+            ch_change = -bet
+            op_change = bet
+            ch_result_str = 'lose'
+            op_result_str = 'win'
+
+        # Обновляем вызов
+        cur.execute("""
+            UPDATE pvp_challenges
+            SET status = 'finished',
+                challenger_score = ch_value,
+                opponent_score = op_value,
+                winner_id = %s
+            WHERE id = %s
+        """, (winner_id, challenge_id))
+
+        # Запись в pvp_history
+        now = datetime.now()
+        cur.execute("""
+            INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (challenge_id, challenger_id, opponent_id, ch_result_str, bet, ch_change, now))
+        cur.execute("""
+            INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (challenge_id, opponent_id, challenger_id, op_result_str, bet, op_change, now))
+
+        conn.commit()
+        return True, winner_id, ch_change, op_change
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка завершения упражнения #{challenge_id}: {e}")
+        logger.error(f"   exercise_id={exercise_id}, ch_result={ch_result}, op_result={op_result}")
+        logger.error(f"   ch_value={ch_value if 'ch_value' in locals() else 'N/A'}, op_value={op_value if 'op_value' in locals() else 'N/A'}")
+        logger.error(f"   winner_id={winner_id if 'winner_id' in locals() else 'N/A'}")
+        import traceback
+        logger.error(f"   Traceback: {traceback.format_exc()}")
+        conn.rollback()
+        return False, None, 0, 0
+    finally:
+        release_db_connection(conn)
+
+
+def _complete_default_challenge(challenge_id, challenger_id, opponent_id,
+                                start_time, end_time, bet, ch_start, op_start):
+    """Завершает обычный вызов по тренировочным очкам."""
+    conn = get_db_connection()
+
+    # Проверяем соединение
+    if conn.closed:
+        logger.error(f"❌ [DEFAULT_ERROR] Соединение закрыто сразу после получения!")
+        return False, None, 0, 0
+
+    try:
+        cur = conn.cursor()
+        logger.info(f"🔄 Завершение вызова #{challenge_id}: {challenger_id} vs {opponent_id}, ставка={bet}")
 
         if isinstance(start_time, str):
             start_time = datetime.fromisoformat(start_time)
@@ -2706,33 +3409,38 @@ def complete_pvp_challenge(challenge_id):
 
         if winner_id is None:
             # Ничья — возврат ставки обоим
-            refund_fun_fuel(challenger_id, bet, "Возврат ставки (ничья)")
-            refund_fun_fuel(opponent_id, bet, "Возврат ставки (ничья)")
+            try:
+                refund_fun_fuel(challenger_id, bet, "Возврат ставки (ничья)")
+                refund_fun_fuel(opponent_id, bet, "Возврат ставки (ничья)")
+            except Exception as refund_error:
+                logger.warning(f"⚠️ Ошибка возврата ставок: {refund_error}")
             ch_change = 0
             op_change = 0
             ch_result = 'draw'
             op_result = 'draw'
         elif winner_id == challenger_id:
             # Победа вызывающего - выплачиваем с комиссией
-            add_fun_fuel(challenger_id, winnings, f'Выигрыш в PvP (вызов #{challenge_id})')
+            try:
+                add_fun_fuel(challenger_id, winnings, f'Выигрыш в PvP (вызов #{challenge_id})')
+            except Exception as ff_error:
+                logger.warning(f"⚠️ Ошибка начисления победителю: {ff_error}")
             ch_change = bet - int(commission / 2)
             op_change = -bet
             ch_result = 'win'
             op_result = 'lose'
         else:
             # Победа соперника - выплачиваем с комиссией
-            add_fun_fuel(opponent_id, winnings, f'Выигрыш в PvP (вызов #{challenge_id})')
+            try:
+                add_fun_fuel(opponent_id, winnings, f'Выигрыш в PvP (вызов #{challenge_id})')
+            except Exception as ff_error:
+                logger.warning(f"⚠️ Ошибка начисления победителю: {ff_error}")
             ch_change = -bet
             op_change = bet - int(commission / 2)
             ch_result = 'lose'
             op_result = 'win'
 
-        # Записываем комиссию в систему
-        try:
-            add_fun_fuel(0, commission, f'Комиссия за вызов #{challenge_id}')  # 0 = системный аккаунт
-            logger.info(f"Получена комиссия {commission} FF за вызов #{challenge_id}")
-        except:
-            pass  # Если системный аккаунт не работает, просто игнорируем
+        # Записываем комиссию в систему (только логирование, без записи пользователю)
+        logger.info(f"💰 Комиссия {commission} FF за вызов #{challenge_id} (не записана)")
 
         # Обновляем вызов
         cur.execute("""
@@ -2746,19 +3454,29 @@ def complete_pvp_challenge(challenge_id):
 
         # Запись в pvp_history
         now = datetime.now()
-        cur.execute("""
-            INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (challenge_id, challenger_id, opponent_id, ch_result, bet, ch_change, now))
-        cur.execute("""
-            INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (challenge_id, opponent_id, challenger_id, op_result, bet, op_change, now))
+        try:
+            cur.execute("""
+                INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (challenge_id, challenger_id, opponent_id, ch_result, bet, ch_change, now))
+            cur.execute("""
+                INSERT INTO pvp_history (challenge_id, user_id, opponent_id, result, bet, score_change, date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (challenge_id, opponent_id, challenger_id, op_result, bet, op_change, now))
+        except Exception as insert_error:
+            logger.error(f"❌ Ошибка записи в pvp_history: {insert_error}")
+            # Не прерываем выполнение, так как основной UPDATE уже выполнен
 
         conn.commit()
-        return True, winner_id, ch_gain, op_gain
+        return True, winner_id, ch_change, op_change
+
     except Exception as e:
-        logger.error(f"Ошибка завершения PvP-вызова {challenge_id}: {e}")
+        logger.error(f"❌ Ошибка завершения вызова #{challenge_id}: {e}")
+        logger.error(f"   challenger_id={challenger_id}, opponent_id={opponent_id}, bet={bet}")
+        logger.error(f"   ch_gain={ch_gain if 'ch_gain' in locals() else 'N/A'}, op_gain={op_gain if 'op_gain' in locals() else 'N/A'}")
+        logger.error(f"   winner_id={winner_id if 'winner_id' in locals() else 'N/A'}")
+        import traceback
+        logger.error(f"   Traceback: {traceback.format_exc()}")
         conn.rollback()
         return False, None, 0, 0
     finally:
@@ -2800,7 +3518,10 @@ def get_user_active_challenges(user_id):
 
     cur.execute("""
         SELECT id, challenger_id, opponent_id, start_time, end_time, status,
-               challenger_score, opponent_score, winner_id
+               challenger_score, opponent_score, winner_id, created_at,
+               bet, exercise_id, challenge_type,
+               challenger_result, opponent_result,
+               challenger_confirmed, opponent_confirmed
         FROM pvp_challenges
         WHERE (challenger_id = %s OR opponent_id = %s)
         AND status IN ('pending', 'active')
@@ -2808,35 +3529,41 @@ def get_user_active_challenges(user_id):
     """, (user_id, user_id))
 
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
 
     return rows
 
 
 def get_user_pvp_history(user_id, limit=5):
-    """Возвращает историю завершённых вызовов пользователя."""
+    """Возвращает историю завершённых вызовов пользователя из pvp_history."""
     conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT
-            pc.id, pc.challenger_id, pc.opponent_id,
-            pc.start_time, pc.end_time, pc.status,
-            pc.challenger_score, pc.opponent_score, pc.winner_id,
-            pc.bet,
-            u1.first_name as challenger_name, u1.username as challenger_username,
-            u2.first_name as opponent_name, u2.username as opponent_username
-        FROM pvp_challenges pc
-        LEFT JOIN users u1 ON pc.challenger_id = u1.telegram_id
-        LEFT JOIN users u2 ON pc.opponent_id = u2.telegram_id
-        WHERE (pc.challenger_id = %s OR pc.opponent_id = %s)
-        AND pc.status = 'finished'
-        ORDER BY pc.created_at DESC
+            ph.challenge_id,
+            ph.user_id,
+            ph.opponent_id,
+            ph.result,
+            ph.bet,
+            ph.score_change,
+            ph.date,
+            u1.first_name as user_name,
+            u1.username as user_username,
+            u2.first_name as opponent_name,
+            u2.username as opponent_username,
+            pc.winner_id
+        FROM pvp_history ph
+        LEFT JOIN users u1 ON ph.user_id = u1.telegram_id
+        LEFT JOIN users u2 ON ph.opponent_id = u2.telegram_id
+        LEFT JOIN pvp_challenges pc ON ph.challenge_id = pc.id
+        WHERE ph.user_id = %s
+        ORDER BY ph.date DESC
         LIMIT %s
-    """, (user_id, user_id, limit))
+    """, (user_id, limit))
 
     rows = cur.fetchall()
-    conn.close()
+    release_db_connection(conn)
 
     return rows
 
@@ -2912,6 +3639,63 @@ def get_user_pvp_stats(user_id):
     return result
 
 
+def get_users_pvp_points_batch(user_ids):
+    """
+    Оптимизированная функция для получения PvP очков для списка пользователей одним запросом.
+    Возвращает словарь {user_id: total_points}
+    """
+    if not user_ids:
+        return {}
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Получаем все scoreboard очки одним запросом
+        cur.execute("""
+            SELECT user_id, COALESCE(SUM(points), 0) as points
+            FROM scoreboard
+            WHERE user_id = ANY(%s)
+            GROUP BY user_id
+        """, (list(user_ids),))
+
+        scoreboard_points = {row[0]: row[1] for row in cur.fetchall()}
+
+        # Проверяем существование таблицы pvp_admin_bonuses
+        admin_bonus_points = {}
+        try:
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = 'pvp_admin_bonuses'
+                )
+            """)
+            table_exists = cur.fetchone()[0]
+
+            if table_exists:
+                cur.execute("""
+                    SELECT user_id, COALESCE(SUM(amount), 0) as bonus
+                    FROM pvp_admin_bonuses
+                    WHERE user_id = ANY(%s)
+                    GROUP BY user_id
+                """, (list(user_ids),))
+                admin_bonus_points = {row[0]: row[1] for row in cur.fetchall()}
+        except Exception as e:
+            logger.warning(f"Не удалось получить админские бонусы: {e}")
+
+        # Комбинируем результаты
+        result = {}
+        for user_id in user_ids:
+            scoreboard = scoreboard_points.get(user_id, 0)
+            bonus = admin_bonus_points.get(user_id, 0)
+            result[user_id] = scoreboard + bonus
+
+        return result
+
+    finally:
+        release_db_connection(conn)
+
+
 def check_active_challenge_between(user_id_1, user_id_2):
     """Проверяет, есть ли активный вызов между двумя пользователями."""
     conn = get_db_connection()
@@ -2925,7 +3709,7 @@ def check_active_challenge_between(user_id_1, user_id_2):
     """, (user_id_1, user_id_2, user_id_2, user_id_1))
 
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
 
     return row is not None
 
@@ -2938,7 +3722,7 @@ def get_setting(key):
     cur = conn.cursor()
     cur.execute("SELECT value FROM settings WHERE key = %s", (key,))
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return row[0] if row else None
 
 
@@ -2951,7 +3735,7 @@ def set_setting(key, value):
         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """, (key, value))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def get_last_recalc():
@@ -2960,7 +3744,7 @@ def get_last_recalc():
     cur = conn.cursor()
     cur.execute("SELECT value FROM system_config WHERE key = 'last_recalc'")
     row = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     if row and row[0] != '0':
         return datetime.fromisoformat(row[0])
     return None
@@ -2972,7 +3756,7 @@ def set_last_recalc(date):
     cur = conn.cursor()
     cur.execute("UPDATE system_config SET value = %s WHERE key = 'last_recalc'", (date.isoformat(),))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 def recalculate_rankings(period_days=7):
@@ -3062,7 +3846,7 @@ def recalculate_rankings(period_days=7):
                                 VALUES (%s, %s, %s, %s, %s, %s)
                                 """, rankings)
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     logger.info(f"Рейтинг пересчитан за период с {start_date} по {datetime.now()}")
 
 
@@ -4735,7 +5519,7 @@ def get_pvp_setting(key):
     cur = conn.cursor()
     cur.execute("SELECT percent FROM pvp_settings WHERE key = %s", (key,))
     result = cur.fetchone()
-    conn.close()
+    release_db_connection(conn)
     return result[0] if result else 0
 
 
@@ -4752,7 +5536,7 @@ def set_pvp_setting(key, percent):
         ON CONFLICT (key) DO UPDATE SET percent = EXCLUDED.percent
     """, (key, percent))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     return True
 
 
@@ -4762,7 +5546,7 @@ def get_all_pvp_settings():
     cur = conn.cursor()
     cur.execute("SELECT key, percent FROM pvp_settings")
     settings = dict(cur.fetchall())
-    conn.close()
+    release_db_connection(conn)
     return settings
 
 

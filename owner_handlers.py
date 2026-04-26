@@ -35,6 +35,9 @@ OWNER_PVP_EXERCISE = "owner_pvp_exercise"
 OWNER_PVP_COMPLEX = "owner_pvp_complex"
 OWNER_PVP_CHALLENGE = "owner_pvp_challenge"
 
+# Досрочное завершение PvP
+OWNER_FINISH_PVP_LIST = "owner_finish_pvp_list"
+
 # PvP перевод очков (аналогично FF)
 OWNER_PVP_TRANSFER = "owner_pvp_transfer"
 OWNER_PVP_TRANSFER_CANCEL = "owner_pvp_transfer_cancel"
@@ -47,10 +50,10 @@ OWNER_CHANNEL_MESSAGE = "owner_channel_message"
 OWNER_CHANNEL_CANCEL = "owner_channel_cancel"
 
 # Состояния для ConversationHandler перевода FF
-WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_CONFIRM = range(3)
+WAITING_FF_TRANSFER_USER, WAITING_FF_TRANSFER_AMOUNT, WAITING_FF_TRANSFER_REASON, WAITING_FF_TRANSFER_CONFIRM = range(4)
 
 # Состояния для ConversationHandler перевода PvP (аналогично FF)
-WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_CONFIRM = range(20, 23)
+WAITING_PVP_TRANSFER_USER, WAITING_PVP_TRANSFER_AMOUNT, WAITING_PVP_TRANSFER_REASON, WAITING_PVP_TRANSFER_CONFIRM = range(20, 24)
 
 # Состояния для ConversationHandler ввода своего процента PvP
 WAITING_PVP_CUSTOM_INPUT = range(10, 11)
@@ -123,6 +126,9 @@ async def owner_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         [
             InlineKeyboardButton("📢 Каналы", callback_data=OWNER_CHANNEL_CHECK),
             InlineKeyboardButton("⚔️ PvP настройки", callback_data=OWNER_PVP_SETTINGS),
+        ],
+        [
+            InlineKeyboardButton("⏩ Завершить PvP", callback_data="owner_finish_pvp_list"),
         ],
         [
             InlineKeyboardButton("ℹ️ FF Информация", callback_data=OWNER_FF_INFO),
@@ -220,8 +226,16 @@ async def owner_balances_callback(update: Update, context: ContextTypes.DEFAULT_
                 safe_username = escape_markdown(username_str)
                 text += f"💎 {safe_first_name} {safe_username}: {balance} FFCoin\n"
 
-                # Добавляем кнопку с ID
-                button_text = f"📋 {telegram_id}"
+                # Создаем текст для кнопки с именем и никнеймом
+                if username:
+                    button_text = f"📋 {first_name} (@{username})"
+                else:
+                    button_text = f"📋 {first_name}"
+
+                # Обрезаем если слишком длинно (максимум 64 символа для кнопки)
+                if len(button_text) > 61:
+                    button_text = button_text[:58] + "..."
+
                 keyboard.append([InlineKeyboardButton(button_text, callback_data=f"copy_id:{telegram_id}")])
 
             keyboard.append([InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)])
@@ -2106,12 +2120,16 @@ async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFA
         await query.answer()
 
         # Получаем список пользователей
-        from database_postgres import get_all_users, get_user_pvp_stats
+        from database_postgres import get_all_users, get_users_pvp_points_batch
         users = get_all_users(limit=20)
 
         if not users:
             await query.edit_message_text("❌ Нет пользователей для перевода.")
             return ConversationHandler.END
+
+        # ОПТИМИЗАЦИЯ: Получаем PvP очки для всех пользователей одним запросом!
+        user_ids = [user[0] for user in users]
+        pvp_points_dict = get_users_pvp_points_batch(user_ids)
 
         # Формируем клавиатуру с пользователями
         keyboard = []
@@ -2121,13 +2139,8 @@ async def owner_pvp_transfer_callback(update: Update, context: ContextTypes.DEFA
             last_name = user[2] or ""
             username = user[3] or ""
 
-            # Получаем PvP Рейтинг пользователя
-            try:
-                pvp_stats = get_user_pvp_stats(user_id)
-                pvp_points = pvp_stats.get('total_points', 0) if pvp_stats else 0
-            except Exception as e:
-                logger.warning(f"Не удалось получить PvP для {user_id}: {e}")
-                pvp_points = 0
+            # Получаем PvP Рейтинг из словаря (ОЧЕНЬ БЫСТРО!)
+            pvp_points = pvp_points_dict.get(user_id, 0)
 
             # Показываем Имя + Никнейм (если есть) + PvP Рейтинг
             if username:
@@ -2254,11 +2267,15 @@ async def show_pvp_amount_menu(update, user_id, message=False):
     else:
         first_name = user_info[1] or "Пользователь"
         username = user_info[3] or ""
+        # Экранируем спецсимволы Markdown
+        safe_first_name = escape_markdown(first_name)
+        safe_username = escape_markdown(f"@{username}") if username else ""
+
         # Показываем Имя + Никнейм (если есть)
         if username:
-            display_user = f"{first_name} (@{username})"
+            display_user = f"{safe_first_name} {safe_username}"
         else:
-            display_user = first_name
+            display_user = safe_first_name
 
         pvp_stats = get_user_pvp_stats(user_id)
         current_pvp = pvp_stats.get('total_points', 0) if pvp_stats else 0
@@ -2309,11 +2326,15 @@ async def owner_pvp_amount_callback(update: Update, context: ContextTypes.DEFAUL
     if user_info:
         first_name = user_info[1] or "Пользователь"
         username = user_info[3] or ""
+        # Экранируем спецсимволы Markdown
+        safe_first_name = escape_markdown(first_name)
+        safe_username = escape_markdown(f"@{username}") if username else ""
+
         # Показываем Имя + Никнейм (если есть)
         if username:
-            display_user = f"{first_name} (@{username})"
+            display_user = f"{safe_first_name} {safe_username}"
         else:
-            display_user = first_name
+            display_user = safe_first_name
 
         text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
         text += f"👤 Получатель: {display_user}\n"
@@ -2378,11 +2399,15 @@ async def owner_pvp_transfer_amount_input(update: Update, context: ContextTypes.
         if user_info:
             first_name = user_info[1] or "Пользователь"
             username = user_info[3] or ""
+            # Экранируем спецсимволы Markdown
+            safe_first_name = escape_markdown(first_name)
+            safe_username = escape_markdown(f"@{username}") if username else ""
+
             # Показываем Имя + Никнейм (если есть)
             if username:
-                display_user = f"{first_name} (@{username})"
+                display_user = f"{safe_first_name} {safe_username}"
             else:
-                display_user = first_name
+                display_user = safe_first_name
 
             text = "📝 **ПРИЧИНА ПЕРЕВОДА**\n\n"
             text += f"👤 Получатель: {display_user}\n"
@@ -2465,11 +2490,15 @@ async def show_pvp_confirm_with_reason(update: Update, context: ContextTypes.DEF
     if user_info:
         first_name = user_info[1] or "Пользователь"
         username = user_info[3] or ""
+        # Экранируем спецсимволы Markdown
+        safe_first_name = escape_markdown(first_name)
+        safe_username = escape_markdown(f"@{username}") if username else ""
+
         # Показываем Имя + Никнейм (если есть)
         if username:
-            display_user = f"{first_name} (@{username})"
+            display_user = f"{safe_first_name} {safe_username}"
         else:
-            display_user = first_name
+            display_user = safe_first_name
 
         text = f"🏆 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
         text += f"👤 Получатель: {display_user}\n"
@@ -2519,11 +2548,15 @@ async def show_pvp_confirm(update, context, message=False):
     if user_info:
         first_name = user_info[1] or "Пользователь"
         username = user_info[3] or ""
+        # Экранируем спецсимволы Markdown
+        safe_first_name = escape_markdown(first_name)
+        safe_username = escape_markdown(f"@{username}") if username else ""
+
         # Показываем Имя + Никнейм (если есть)
         if username:
-            display_user = f"{first_name} (@{username})"
+            display_user = f"{safe_first_name} {safe_username}"
         else:
-            display_user = first_name
+            display_user = safe_first_name
 
         text = f"🏆 **ПОДТВЕРЖДЕНИЕ ПЕРЕВОДА**\n\n"
         text += f"👤 Получатель: {display_user}\n"
@@ -3050,3 +3083,177 @@ async def owner_channel_message_cancel(update: Update, context: ContextTypes.DEF
     """Отменяет отправку сообщения."""
     await update.message.reply_text("❌ Отправка сообщения отменена")
     return ConversationHandler.END
+
+
+@owner_only
+async def owner_force_finish_pvp_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Досрочно завершает активный PvP-вызов."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    challenge_id = int(query.data.split(":")[1])
+    logger.info(f"🎯 [FORCE_FINISH] Начало принудительного завершения вызова #{challenge_id}")
+
+    from database_postgres import force_finish_pvp_challenge, get_pvp_challenge
+
+    # Завершаем вызов
+    try:
+        success, winner_id, ch_gain, op_gain = force_finish_pvp_challenge(challenge_id)
+    except Exception as finish_error:
+        import traceback
+
+        error_details = f"❌ Ошибка завершения вызова #{challenge_id}\n\n"
+        error_details += f"🔍 Детали:\n"
+        error_details += f"   Error Type: {type(finish_error).__name__}\n"
+        error_details += f"   Error: {finish_error}\n\n"
+        error_details += f"   Traceback:\n{traceback.format_exc()[:800]}"
+
+        logger.error(error_details)
+
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        try:
+            await query.edit_message_text(error_details, reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception as msg_error:
+            logger.error(f"❌ Ошибка отправки сообщения: {msg_error}")
+        return
+
+    if not success:
+        # Попробуем получить больше информации
+        try:
+            from database_postgres import get_pvp_challenge
+            challenge_info = get_pvp_challenge(challenge_id)
+        except Exception as db_error:
+            error_details = f"❌ Ошибка завершения вызова #{challenge_id}\n\n"
+            error_details += f"🔍 Детали:\n"
+            error_details += f"   force_finish вернул False\n"
+            error_details += f"   Ошибка получения информации: {db_error}\n"
+            error_details += f"   Error Type: {type(db_error).__name__}"
+
+            logger.error(error_details)
+
+            keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+            await query.edit_message_text(error_details, reply_markup=InlineKeyboardMarkup(keyboard))
+            return
+
+        error_details = f"❌ Ошибка завершения вызова #{challenge_id}\n\n"
+        error_details += f"🔍 Детали вызова:\n"
+
+        if challenge_info:
+            error_details += f"   Status: {challenge_info[5] if len(challenge_info) > 5 else 'N/A'}\n"
+            error_details += f"   Type: {challenge_info[11] if len(challenge_info) > 11 else 'N/A'}\n"
+            error_details += f"   Exercise ID: {challenge_info[10] if len(challenge_info) > 10 else 'N/A'}\n"
+            error_details += f"   Ch Result: {challenge_info[12] if len(challenge_info) > 12 else 'N/A'}\n"
+            error_details += f"   Op Result: {challenge_info[13] if len(challenge_info) > 13 else 'N/A'}\n"
+        else:
+            error_details += "   Вызов не найден в БД\n"
+
+        logger.error(error_details)
+
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        await query.edit_message_text(error_details, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # Получаем информацию о вызове
+    challenge_data = get_pvp_challenge(challenge_id)
+    if not challenge_data:
+        text = f"⚠️ Вызов #{challenge_id} завершён, но данные не найдены"
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    challenger_id = challenge_data[1]
+    opponent_id = challenge_data[2]
+    bet = challenge_data[9] if len(challenge_data) > 9 else 0
+
+    from database_postgres import get_user_info
+    ch_info = get_user_info(challenger_id)
+    op_info = get_user_info(opponent_id)
+
+    ch_name = ch_info[1] if ch_info else "Вызывающий"
+    op_name = op_info[1] if op_info else "Соперник"
+
+    text = f"✅ PvP ВЫЗОВ ЗАВЕРШЁН\n\n"
+    text += f"🆔 Вызов: #{challenge_id}\n"
+    text += f"👤 {ch_name} vs {op_name}\n"
+    text += f"💰 Ставка: {bet}\n\n"
+
+    if winner_id:
+        winner_name = ch_name if winner_id == challenger_id else op_name
+        text += f"🏆 Победитель: {winner_name}\n"
+        text += f"📊 {ch_name}: {ch_gain:+d}\n"
+        text += f"📊 {op_name}: {op_gain:+d}\n\n"
+    else:
+        text += f"🤝 Ничья!\n\n"
+
+    text += f"💡 Вызов записан в историю!"
+
+    keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+
+@owner_only
+async def owner_finish_pvp_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает список активных PvP вызов для досрочного завершения."""
+    query = update.callback_query
+
+    try:
+        await query.answer()
+    except:
+        pass
+
+    from database_postgres import get_db_connection, release_db_connection
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Получаем активные вызовы
+    cur.execute("""
+        SELECT pc.id, pc.challenger_id, pc.opponent_id, pc.status, pc.bet,
+               u1.first_name as ch_name, u1.username as ch_username,
+               u2.first_name as op_name, u2.username as op_username
+        FROM pvp_challenges pc
+        LEFT JOIN users u1 ON pc.challenger_id = u1.telegram_id
+        LEFT JOIN users u2 ON pc.opponent_id = u2.telegram_id
+        WHERE pc.status IN ('pending', 'active')
+        ORDER BY pc.created_at DESC
+        LIMIT 10
+    """)
+
+    challenges = cur.fetchall()
+    release_db_connection(conn)
+
+    if not challenges:
+        text = "⏩ ЗАВЕРШЕНИЕ PvP\n\n"
+        text += "Нет активных вызовов."
+
+        keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    text = "⏩ ЗАВЕРШЕНИЕ PvP\n\n"
+    text += f"Активных вызовов: {len(challenges)}\n\n"
+    text += "Выберите вызов для завершения:\n\n"
+
+    keyboard = []
+    for ch in challenges:
+        ch_id, challenger_id, opponent_id, status, bet, ch_name, ch_username, op_name, op_username = ch
+
+        ch_display = f"{ch_name} (@{ch_username})" if ch_username else ch_name
+        op_display = f"{op_name} (@{op_username})" if op_username else op_name
+
+        status_emoji = "⏳" if status == "pending" else "⚔️"
+
+        text += f"{status_emoji} #{ch_id}: {ch_display} vs {op_display} ({bet} FF)\n"
+
+        keyboard.append([InlineKeyboardButton(
+            f"⏩ Завершить #{ch_id}",
+            callback_data=f"owner_finish_pvp:{ch_id}"
+        )])
+
+    keyboard.append([InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)])
+
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))

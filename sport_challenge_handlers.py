@@ -13,6 +13,7 @@ from database_postgres import (
     get_exercise_by_id, get_challenge_by_id
 )
 import channel_notifications
+from formatters import format_number
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def format_exercise_result(value, metric):
 
 # Константы
 CHALLENGE_EXERCISE_INPUT = 40  # Ввод данных упражнения
-CHALLENGE_PROOF_UPLOAD = 41    # Загрузка доказательства
+CHALLENGE_PROOF_UPLOAD = 41    # Загрузка доказывания
 
 # ==================== ПОКАЗ АКТИВНЫХ ЧЕЛЛЕНДЖЕЙ ====================
 
@@ -44,7 +45,7 @@ async def challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not challenges:
         text = (
-            "🏆 **ЧЕЛЛЕНДЖИ**\n\n"
+            "🏆 ЧЕЛЛЕНДЖИ\n\n"
             "❌ Активных челленджей пока нет\n\n"
             "Ждите интересные соревнования!"
         )
@@ -53,7 +54,7 @@ async def challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
         return
 
-    text = "🏆 **АКТИВНЫЕ ЧЕЛЛЕНДЖИ**\n\nВыберите челлендж:"
+    text = "🏆 АКТИВНЫЕ ЧЕЛЛЕНДЖИ\n\nВыберите челлендж:"
 
     keyboard = []
     for ch in challenges[:7]:  # Показываем первые 7
@@ -83,7 +84,7 @@ async def my_challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not challenges:
         text = (
-            "🏆 **МОИ ЧЕЛЛЕНДЖИ**\n\n"
+            "🏆 МОИ ЧЕЛЛЕНДЖИ\n\n"
             "❌ Вы еще не участвуете в челленджах\n\n"
             "Присоединяйтесь к активным челленджам!"
         )
@@ -92,7 +93,7 @@ async def my_challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
         return
 
-    text = "🏆 **МОИ ЧЕЛЛЕНДЖИ**\n\nВыберите челлендж:"
+    text = "🏆 МОИ ЧЕЛЛЕНДЖИ\n\nВыберите челлендж:"
 
     keyboard = []
     for ch in challenges:
@@ -167,12 +168,12 @@ async def show_challenge_info(update: Update, context: ContextTypes.DEFAULT_TYPE
         status_text = '🔥 Активен'
 
     text = (
-        f"🏆 **{name}**\n\n"
+        f"🏆 {name}\n\n"
         f"📝 {description}\n\n"
-        f"📊 **Цель:** {target_value} {metric_text}\n"
-        f"📅 **Период:** {start_date_str} - {end_date_str}\n"
-        f"⭐ **Бонус:** {bonus_points} очков\n"
-        f"📈 **Статус:** {status_text}\n"
+        f"📊 Цель: {format_number(target_value)} {metric_text}\n"
+        f"📅 Период: {start_date_str} - {end_date_str}\n"
+        f"⭐ Бонус: {bonus_points} очков\n"
+        f"📈 Статус: {status_text}\n"
     )
 
     # Кнопки в зависимости от участия
@@ -225,8 +226,8 @@ async def show_challenge_exercises(update: Update, context: ContextTypes.DEFAULT
     total_count = len(exercises)
 
     text = (
-        f"🏆 **{challenge_name}**\n\n"
-        f"🏋️ **УПРАЖНЕНИЯ** ({completed_count}/{total_count} выполнено)\n\n"
+        f"🏆 {challenge_name}\n\n"
+        f"🏋️ УПРАЖНЕНИЯ ({completed_count}/{total_count} выполнено)\n\n"
     )
 
     keyboard = []
@@ -293,7 +294,7 @@ async def start_challenge_exercise(update: Update, context: ContextTypes.DEFAULT
         example = "60"
 
     text = (
-        f"🏋️ **{name}**\n\n"
+        f"🏋️ {name}\n\n"
         f"📊 Метрика: {metric_text}\n"
         f"📝 {description}\n\n"
         f"Введите результат {input_format}\n"
@@ -365,7 +366,7 @@ async def input_exercise_result(update: Update, context: ContextTypes.DEFAULT_TY
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="sport_cancel")]]
     await update.message.reply_text(
         f"✅ Результат: {result_value}\n\n"
-        f"📎 **Отправьте ссылку на видео (YouTube, Vimeo) или прикрепите видео/фото!**\n\n"
+        f"📎 Отправьте ссылку на видео (YouTube, Vimeo) или прикрепите видео/фото!\n\n"
         f"⚠️ Без доказательства упражнение не будет засчитано.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
@@ -410,7 +411,7 @@ async def upload_exercise_proof(update: Update, context: ContextTypes.DEFAULT_TY
         else:
             keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="sport_cancel")]]
             await update.message.reply_text(
-                "❌ **Пожалуйста, отправьте ссылку на видео (начинается с http:// или https://)**\n\n"
+                "❌ Пожалуйста, отправьте ссылку на видео (начинается с http:// или https://)\n\n"
                 "Или прикрепите видео/фото файл.",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
@@ -420,7 +421,7 @@ async def upload_exercise_proof(update: Update, context: ContextTypes.DEFAULT_TY
         # Если нет ничего - требуем загрузить
         keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data="sport_cancel")]]
         await update.message.reply_text(
-            "❌ **Обязательно приложите фото, видео или ссылку на видео!**\n\n"
+            "❌ Обязательно приложите фото, видео или ссылку на видео!\n\n"
             "Без доказательства упражнение не будет засчитано.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='Markdown'
@@ -463,16 +464,16 @@ async def upload_exercise_proof(update: Update, context: ContextTypes.DEFAULT_TY
     if success:
         if status == 'completed':
             text = (
-                f"🎉 **ПОТРЯСАЮЩЕ!**\n\n"
-                f"🏆 **ЧЕЛЛЕНДЖ ЗАВЕРШЕН!**\n\n"
+                f"🎉 ПОТРЯСАЮЩЕ!\n\n"
+                f"🏆 ЧЕЛЛЕНДЖ ЗАВЕРШЕН!\n\n"
                 f"⭐ Вы выполнили все упражнения и получили бонусные очки!"
             )
             keyboard = [[InlineKeyboardButton("🏋️ Мои челленджи", callback_data="sport_my_challenges")]]
         else:
             formatted_result = format_exercise_result(result_value, metric) if metric else str(result_value)
             text = (
-                f"✅ **УПРАЖНЕНИЕ ВЫПОЛНЕНО!**\n\n"
-                f"📊 Результат: {formatted_result}\n\n"
+                f"✅ УПРАЖНЕНИЕ ВЫПОЛНЕНО!\n\n"
+                f"📊 Результат: {format_number(formatted_result)}\n\n"
                 f"Продолжайте в том же духе! Остались еще упражнения 💪"
             )
             keyboard = [[InlineKeyboardButton("🏋️ К упражнениям", callback_data=f"sport_challenge_exercises_{challenge_id}")]]
@@ -536,8 +537,8 @@ async def join_challenge_callback(update: Update, context: ContextTypes.DEFAULT_
 
     if success:
         text = (
-            f"✅ **ВЫ ПРИСОЕДИНИЛИСЬ!**\n\n"
-            f"🏆 **{name}**\n\n"
+            f"✅ ВЫ ПРИСОЕДИНИЛИСЬ!\n\n"
+            f"🏆 {name}\n\n"
             f"Теперь выполняйте упражнения и получайте бонусные очки!\n\n"
             f"Удачи! 💪"
         )
@@ -571,7 +572,7 @@ async def show_challenge_progress(update: Update, context: ContextTypes.DEFAULT_
     # Создаем словарь прогресса
     progress_dict = {p[0]: p for p in progress}
 
-    text = f"📊 **ПРОГРЕСС: {challenge_name}**\n\n"
+    text = f"📊 ПРОГРЕСС: {challenge_name}\n\n"
 
     for ex in exercises:
         ex_id, name, description, metric, points, week, difficulty = ex
@@ -580,16 +581,16 @@ async def show_challenge_progress(update: Update, context: ContextTypes.DEFAULT_
             p = progress_dict[ex_id]
             if p[1]:  # completed
                 completed_at = p[4].strftime('%d.%m %H:%M') if p[4] else '?'
-                text += f"✅ **{name}**\n   Результат: {p[2]} | {completed_at}\n\n"
+                text += f"✅ {name}\n   Результат: {p[2]} | {completed_at}\n\n"
             else:
-                text += f"⬜ **{name}** - не выполнено\n\n"
+                text += f"⬜ {name} - не выполнено\n\n"
         else:
-            text += f"⬜ **{name}** - не начато\n\n"
+            text += f"⬜ {name} - не начато\n\n"
 
     completed_count = sum(1 for p in progress if p[1])
     total_count = len(exercises)
 
-    text += f"\n**Всего выполнено:** {completed_count}/{total_count}"
+    text += f"\nВсего выполнено: {completed_count}/{total_count}"
 
     keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data=f"sport_my_challenge_{challenge_id}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)

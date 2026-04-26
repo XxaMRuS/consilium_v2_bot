@@ -31,6 +31,7 @@ from owner_handlers import (
     owner_ff_transfer_user_input, owner_ff_transfer_amount_input, owner_ff_amount_callback, owner_ff_custom_amount_callback,
     owner_ff_transfer_confirm_callback, owner_ff_transfer_cancel_callback,
     owner_pvp_settings_callback, owner_pvp_exercise_callback, owner_pvp_complex_callback, owner_pvp_challenge_callback,
+    owner_finish_pvp_list_callback, owner_force_finish_pvp_callback,
     owner_pvp_set_percent_callback, owner_pvp_custom_percent_callback, owner_pvp_custom_input,
     owner_pvp_transfer_callback, owner_pvp_select_user_callback, owner_pvp_manual_input_callback,
     owner_pvp_transfer_user_input, owner_pvp_transfer_amount_input, owner_pvp_amount_callback, owner_pvp_custom_amount_callback,
@@ -46,6 +47,7 @@ from owner_handlers import (
     OWNER_COMPETITIONS, OWNER_COMPETITIONS_TOGGLE, OWNER_COMPETITIONS_ENABLE_ALL, OWNER_COMPETITIONS_DISABLE_ALL, OWNER_COMPETITIONS_ENABLE_BEGINNERS,
     OWNER_FF_INFO, OWNER_FF_TRANSFER, OWNER_FF_TRANSFER_CANCEL, OWNER_FF_TRANSFER_CONFIRM_YES,
     OWNER_PVP_SETTINGS, OWNER_PVP_EXERCISE, OWNER_PVP_COMPLEX, OWNER_PVP_CHALLENGE,
+    OWNER_FINISH_PVP_LIST,
     OWNER_PVP_TRANSFER, OWNER_PVP_TRANSFER_CANCEL, OWNER_PVP_TRANSFER_CONFIRM_YES,
     OWNER_CHANNEL_CHECK, OWNER_CHANNEL_RECONNECT, OWNER_CHANNEL_MESSAGE
 )
@@ -54,19 +56,27 @@ from owner_handlers import (
 from mountain_handlers import (
     mountain_menu_command, mountain_beginners_callback, mountain_pros_callback,
     mountain_top_callback, mountain_search_callback, mountain_refresh_callback,
-    mountain_back_callback, handle_search_input, MOUNTAIN_MENU_CALLBACK,
-    MOUNTAIN_BEGINNERS_CALLBACK, MOUNTAIN_PROS_CALLBACK, MOUNTAIN_SEARCH_CALLBACK,
-    MOUNTAIN_TOP20_CALLBACK, MOUNTAIN_TOP50_CALLBACK, MOUNTAIN_TOP100_CALLBACK,
-    MOUNTAIN_TOP200_CALLBACK, MOUNTAIN_REFRESH_CALLBACK, MOUNTAIN_BACK_CALLBACK
+    mountain_back_callback, mountain_profile_callback, handle_search_input,
+    clear_mountain_cache_command,
+    MOUNTAIN_MENU_CALLBACK, MOUNTAIN_BEGINNERS_CALLBACK, MOUNTAIN_PROS_CALLBACK,
+    MOUNTAIN_SEARCH_CALLBACK, MOUNTAIN_TOP20_CALLBACK, MOUNTAIN_TOP50_CALLBACK,
+    MOUNTAIN_TOP100_CALLBACK, MOUNTAIN_TOP200_CALLBACK, MOUNTAIN_REFRESH_CALLBACK,
+    MOUNTAIN_BACK_CALLBACK
 )
 from pvp_handlers import (
     pvp_main_menu, pvp_show_challenge_candidates, pvp_select_bet,
     pvp_send_challenge_with_bet, pvp_accept_challenge, pvp_reject_challenge,
     pvp_my_challenges, pvp_show_history, pvp_show_stats, pvp_cancel_challenge,
+    pvp_select_challenge_type, pvp_select_exercise, pvp_handle_exercise_select,
+    pvp_show_exercise_result_input, pvp_submit_exercise_result,
+    pvp_confirm_exercise_result, pvp_refresh_results,
+    pvp_handle_exercise_result_input,
     PVP_MENU_CALLBACK, PVP_NEW_CHALLENGE_CALLBACK, PVP_MY_CHALLENGES_CALLBACK,
     PVP_HISTORY_CALLBACK, PVP_STATS_CALLBACK, PVP_COINS_CALLBACK,
     PVP_LEADERBOARD_CALLBACK, PVP_CHALLENGE_USER_PREFIX, PVP_BET_PREFIX,
-    PVP_ACCEPT_PREFIX, PVP_REJECT_PREFIX, PVP_CANCEL_PREFIX
+    PVP_ACCEPT_PREFIX, PVP_REJECT_PREFIX, PVP_CANCEL_PREFIX,
+    PVP_EXERCISE_TYPE_PREFIX, PVP_EXERCISE_SELECT_PREFIX,
+    PVP_RESULT_SUBMIT_PREFIX, PVP_RESULT_CONFIRM_PREFIX
 )
 from referral_handlers import (
     referral_command, show_referral_link, handle_referral_start
@@ -75,7 +85,7 @@ from admin_handlers import admin_menu, admin_exercise_add_conversation, admin_ex
 from sport_handlers import (
     sport_menu, exercises_list, challenges_list, complexes_list, show_complex_info, start_complex_execution, set_complex_mode,
     sport_ratings, sport_top_workouts, sport_top_challenges, sport_top_complexes, sport_my_stats,
-    start_workout, handle_complex_exercise_result, handle_complex_media,
+    start_workout, show_exercise_card, handle_complex_exercise_result, handle_complex_media,
     SPORT_MENU, SPORT_EXERCISES, SPORT_CHALLENGES, SPORT_COMPLEXES, SPORT_RATINGS, SPORT_MY_STATS,
     SPORT_TOP_WORKOUTS, SPORT_TOP_CHALLENGES, SPORT_TOP_COMPLEXES, SPORT_BACK_TO_MAIN,
     SPORT_WORKOUT_START, SPORT_CHALLENGE_JOIN, SPORT_COMPLEX_START, SPORT_COMPLEX_DO,
@@ -114,7 +124,11 @@ load_dotenv()
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("debug.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -354,8 +368,24 @@ async def handle_main_menu(update: Update, context) -> None:
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
         group_emoji = "😊 Новичок" if stats['user_group'] == 'newbie' else "😎 Эксперт"
-        percent_text = f"{stats['percent_from_top']:.1f}%" if stats['percent_from_top'] is not None else "N/A"
         username_text = f"@{stats['username']}" if stats['username'] else "(нет username)"
+
+        # Получаем очки лидера для расчета разрыва
+        from database_postgres import get_mountain_ranking
+        try:
+            top_users = get_mountain_ranking(stats['user_group'], limit=1)
+            leader_score = top_users[0][3] if top_users else 0
+            user_score = stats['score']
+            score_gap = leader_score - user_score if leader_score > user_score else 0
+
+            if score_gap > 0:
+                gap_text = f"📈 До вершины: {score_gap:,} очков".replace(',', ' ')
+            else:
+                gap_text = "👑 Ты на вершине!"
+        except:
+            gap_text = "📈 До вершины: рассчитываем..."
+
+        percent_text = f"{stats['percent_from_top']:.1f}%" if stats['percent_from_top'] is not None else "N/A"
 
         # Экранируем имя пользователя
         safe_first_name = stats['first_name'].replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]')
@@ -366,11 +396,18 @@ async def handle_main_menu(update: Update, context) -> None:
         except:
             frun_balance = 0
 
-        # Получаем спортивные очки для PvP
+        # Получаем FruNFuel (очки на Горе Успеха)
         try:
-            pvp_points = get_user_scoreboard_total(user_id)
+            from database_postgres import get_fun_fuel_balance
+            fun_fuel = get_fun_fuel_balance(user_id)
         except:
-            pvp_points = 0
+            fun_fuel = 0
+
+        # Получаем тренировочные очки
+        training_score = stats.get('score', 0)
+
+        # FruNStatus - медали (каждые 100 очков = 1 медаль)
+        frun_status_medals = training_score // 100
 
         # Получаем PvP-статистику
         try:
@@ -379,20 +416,25 @@ async def handle_main_menu(update: Update, context) -> None:
             pvp_stats = {'total': 0, 'wins': 0, 'losses': 0, 'draws': 0, 'coins_won': 0, 'coins_lost': 0}
 
         text = (
-            f"👤 **ТВОЙ ПРОФИЛЬ**\n\n"
+            f"👤 ТВОЙ ПРОФИЛЬ\n\n"
             f"👤 Имя: {safe_first_name}\n"
             f"📝 Username: {username_text}\n"
             f"📊 Группа: {group_emoji}\n\n"
-            f"💎 **FFCoin:** {frun_balance}\n"
+            f"💎 FFCoin: {frun_balance}\n"
             f"💡 Валюта для ставок\n\n"
-            f"🏆 **FruNStatus:** {pvp_points}\n"
-            f"💡 Твой ранг (каждые 100 = медаль!)\n\n"
-            f"⛰️ **ПОЗИЦИЯ НА ГОРЕ**\n"
+            f"⛽ FruNFuel: {fun_fuel}\n"
+            f"💡 Очки на Горе Успеха\n\n"
+            f"🏆 Тренировочные очки: {training_score}\n"
+            f"💡 Очки за выполнение упражнений\n\n"
+            f"🏅 FruNStatus: {frun_status_medals} медалей\n"
+            f"💡 Твой ранг (каждые 100 очков = медаль!)\n\n"
+            f"⛰️ ПОЗИЦИЯ НА ГОРЕ\n"
             f"📍 Место: {stats['position']} из {stats['total']}\n"
-            f"📈 От вершины: {percent_text}\n\n"
-            f"🏋️ **ТРЕНИРОВКИ**\n"
+            f"{gap_text}\n"
+            f"📊 Топ: {percent_text}\n\n"
+            f"🏋️ ТРЕНИРОВКИ\n"
             f"💪 Всего: {stats['workout_count']}\n\n"
-            f"🏆 **PvP СТАТИСТИКА**\n"
+            f"🏆 PvP СТАТИСТИКА\n"
             f"🎯 Всего вызовов: {pvp_stats['total']}\n"
             f"🏆 Побед: {pvp_stats['wins']}\n"
             f"😢 Поражений: {pvp_stats['losses']}\n"
@@ -407,35 +449,10 @@ async def handle_main_menu(update: Update, context) -> None:
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
-            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+            await query.edit_message_text(text, reply_markup=reply_markup)
         except Exception as e:
-            # Если Markdown сломался, отправляем без форматирования
-            plain_text = (
-                f"👤 ТВОЙ ПРОФИЛЬ\n\n"
-                f"👤 Имя: {stats['first_name']}\n"
-                f"📝 Username: {username_text}\n"
-                f"📊 Группа: {group_emoji}\n\n"
-                f"💎 FFCoin: {frun_balance}\n"
-                f"💡 Валюта для ставок\n\n"
-                f"🏆 FruNStatus: {pvp_points}\n"
-                f"💡 Твой ранг (каждые 100 = медаль!)\n\n"
-                f"⛰️ ПОЗИЦИЯ НА ГОРЕ\n"
-                f"📍 Место: {stats['position']} из {stats['total']}\n"
-                f"📈 От вершины: {percent_text}\n\n"
-                f"🏋️ ТРЕНИРОВКИ\n"
-                f"💪 Всего: {stats['workout_count']}\n\n"
-                f"🏆 PvP СТАТИСТИКА\n"
-                f"🎯 Всего вызовов: {pvp_stats['total']}\n"
-                f"🏆 Побед: {pvp_stats['wins']}\n"
-                f"😢 Поражений: {pvp_stats['losses']}\n"
-                f"🤝 Ничьих: {pvp_stats['draws']}\n"
-                f"💰 Выиграно очков: +{pvp_stats['coins_won']}\n"
-                f"💸 Проиграно очков: {pvp_stats['coins_lost']}\n"
-            )
-            try:
-                await query.edit_message_text(plain_text, reply_markup=reply_markup)
-            except:
-                pass
+            logger.error(f"Ошибка при показе профиля: {e}")
+            pass
     elif callback_data == "admin":
         # Админ-панель
         await admin_menu(update, context)
@@ -496,6 +513,8 @@ async def handle_callback_query(update: Update, context) -> None:
             await mountain_top_callback(update, context)
         elif callback_data.startswith(MOUNTAIN_REFRESH_CALLBACK):
             await mountain_refresh_callback(update, context)
+        elif callback_data.startswith("mountain_profile_"):
+            await mountain_profile_callback(update, context)
         elif callback_data == MOUNTAIN_BACK_CALLBACK:
             await mountain_back_callback(update, context)
         elif callback_data == MOUNTAIN_MENU_CALLBACK:
@@ -513,10 +532,16 @@ async def handle_callback_query(update: Update, context) -> None:
         elif callback_data == PVP_STATS_CALLBACK:
             await pvp_show_stats(update, context)
         elif callback_data.startswith(PVP_CHALLENGE_USER_PREFIX):
-            # Выбор пользователя для вызова - функция сама обработает callback_data
-            await pvp_select_bet(update, context)
+            # Выбор типа вызова (упражнение или стандартный)
+            await pvp_select_challenge_type(update, context)
+        elif callback_data.startswith(PVP_EXERCISE_TYPE_PREFIX):
+            # Выбор упражнения или переход к ставке
+            await pvp_select_exercise(update, context)
+        elif callback_data.startswith(PVP_EXERCISE_SELECT_PREFIX):
+            # Выбор конкретного упражнения и переход к ставке
+            await pvp_handle_exercise_select(update, context)
         elif callback_data.startswith(PVP_BET_PREFIX):
-            # Выбор ставки - данные уже сохранены в pvp_select_bet
+            # Выбор ставки - данные уже сохранены
             await pvp_send_challenge_with_bet(update, context)
         elif callback_data.startswith(PVP_ACCEPT_PREFIX):
             # Принятие вызова - функция сама обработает callback_data
@@ -528,6 +553,15 @@ async def handle_callback_query(update: Update, context) -> None:
             # Отмена вызова
             challenge_id = int(callback_data.replace(PVP_CANCEL_PREFIX, ""))
             await pvp_cancel_challenge(update, context)
+        elif callback_data == "pvp_refresh_results":
+            # Обновление экрана результатов
+            await pvp_refresh_results(update, context)
+        elif callback_data.startswith(PVP_RESULT_SUBMIT_PREFIX):
+            # Отправка результата упражнения
+            await pvp_submit_exercise_result(update, context)
+        elif callback_data.startswith(PVP_RESULT_CONFIRM_PREFIX):
+            # Подтверждение результата упражнения
+            await pvp_confirm_exercise_result(update, context)
 
         # ==================== СПОРТ ====================
         elif callback_data == SPORT_EXERCISES:
@@ -550,8 +584,14 @@ async def handle_callback_query(update: Update, context) -> None:
             await sport_menu(update, context)
         elif callback_data == SPORT_BACK_TO_MAIN:
             await show_main_menu(update, context)
+        elif callback_data.startswith("sport_exercise_view_"):
+            # Показ карточки упражнения
+            await show_exercise_card(update, context)
+        elif callback_data.startswith("sport_exercise_do_"):
+            # Начинаем ввод результата упражнения
+            await start_workout(update, context)
         elif callback_data.startswith(SPORT_WORKOUT_START):
-            # Вызов упражнения - используем ConversationHandler
+            # Вызов упражнения - используем ConversationHandler (для обратной совместимости)
             await start_workout(update, context)
         elif callback_data.startswith(SPORT_CHALLENGE_JOIN):
             # Присоединение к челленджу - используем реальную функцию
@@ -781,13 +821,10 @@ async def handle_callback_query(update: Update, context) -> None:
 def main() -> None:
     """Главная функция для запуска бота"""
     # Инициализируем базу данных
-    from database_postgres import init_db, init_connection_pool
+    from database_postgres import init_db
     from cache_manager import start_cache_cleanup
 
     init_db()
-
-    # Инициализируем connection pool для ускорения
-    init_connection_pool(minconn=3, maxconn=20)
 
     # Запускаем автоматическую очистку кэша
     start_cache_cleanup(interval=300)  # Каждые 5 минут
@@ -801,6 +838,7 @@ def main() -> None:
     application.add_handler(CommandHandler("menu", menu))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("id", show_user_id))
+    application.add_handler(CommandHandler("clear_mountain_cache", clear_mountain_cache_command))
 
     # Регистрируем обработчики для Reply-кнопок с эмодзи
     application.add_handler(MessageHandler(filters.Regex(r'^🏠 Меню$'), handle_menu_button))
@@ -905,11 +943,15 @@ def main() -> None:
             ],
         },
         fallbacks=[CallbackQueryHandler(owner_pvp_settings_callback, pattern=f'^{OWNER_PVP_SETTINGS}$')],
-        per_message=True  # Отслеживать CallbackQueryHandler для каждого сообщения
+        per_message=False  # Отключено, так как есть MessageHandler
     )
 
     # Регистрируем ConversationHandler для ввода своего процента PvP
     application.add_handler(owner_pvp_custom_conversation)
+
+    # Регистрируем обработчики для досрочного завершения PvP
+    application.add_handler(CallbackQueryHandler(owner_finish_pvp_list_callback, pattern=f'^{OWNER_FINISH_PVP_LIST}$'))
+    application.add_handler(CallbackQueryHandler(owner_force_finish_pvp_callback, pattern=r'^owner_finish_pvp:\d+$'))
 
     # Создаём ConversationHandler для отправки сообщения в канал
     owner_channel_message_conversation = ConversationHandler(
@@ -954,6 +996,7 @@ def main() -> None:
     # Регистрируем обработчик для поискового ввода (должен быть последним)
     application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL, handle_complex_media))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_complex_exercise_result))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, pvp_handle_exercise_result_input))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_input_if_waiting))
 
     # Регистрируем универсальный обработчик для всех остальных callback

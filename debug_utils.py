@@ -8,7 +8,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 # ==================== НАСТРОЙКА ====================
-DEBUG_MODE = True
+DEBUG_MODE = False  # ВЫКЛЮЧЕНО для производительности!
 LOG_FILE = "debug.log"
 
 # Логгер

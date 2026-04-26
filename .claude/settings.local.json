@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3 -m py_compile bot.py)",
       "Bash(python -m py_compile bot.py)",
-      "Bash(python -m py_compile sport_handlers.py)"
+      "Bash(python -m py_compile sport_handlers.py)",
+      "Bash(python *)"
     ]
   }
 }

@@ -23,6 +23,15 @@ async def notify_new_exercise(bot, exercise_data, creator_name):
         difficulty = exercise_data.get('difficulty', 'beginner')
         points = exercise_data.get('points', 0)
 
+        # Перевод метрик
+        metric_names = {
+            'reps': 'Повторы',
+            'time': 'Время (мин)',
+            'weight': 'Вес (кг)',
+            'distance': 'Дистанция (км)'
+        }
+        metric_text = metric_names.get(metric, metric)
+
         # Определяем сложность
         difficulty_emoji = {
             'beginner': '👶',
@@ -33,7 +42,7 @@ async def notify_new_exercise(bot, exercise_data, creator_name):
         text = f"🆕 **НОВОЕ УПРАЖНЕНИЕ**\n\n"
         text += f"{difficulty_emoji} **{name}**\n\n"
         text += f"📝 {description}\n\n"
-        text += f"📊 Метрика: {metric}\n"
+        text += f"📊 Метрика: {metric_text}\n"
         text += f"💎 Очки: {points}\n"
         text += f"🆔 ID: {exercise_id}\n\n"
         text += f"👤 Создал: {creator_name}\n"
@@ -213,3 +222,44 @@ async def notify_complex_completion(bot, completion_data):
 
     except Exception as e:
         logger.error(f"Ошибка отправки уведомления о комплексе: {e}")
+
+
+async def notify_new_record(bot, user_id, exercise_id, new_result, metric_type, user_name=None, exercise_name=None):
+    """Отправляет уведомление о новом личном рекорде в канал."""
+    try:
+        from database_postgres import get_exercise_by_id, get_user_info
+
+        # Получаем информацию об упражнении
+        if not exercise_name:
+            exercise = get_exercise_by_id(exercise_id)
+            if exercise:
+                exercise_name = exercise[1]  # name
+            else:
+                exercise_name = "Упражнение"
+
+        # Получаем информацию о пользователе
+        if not user_name:
+            user = get_user_info(user_id)
+            if user:
+                user_name = user[1]  # name
+
+        # Форматируем результат
+        metric_names = {'reps': 'раз', 'time': 'сек', 'weight': 'кг', 'distance': 'км'}
+        metric_text = metric_names.get(metric_type, metric_type)
+
+        text = "🏆 **НОВЫЙ ЛИЧНЫЙ РЕКОРД**\n\n"
+        text += f"👤 {user_name or 'Пользователь'}\n"
+        text += f"🏋️ {exercise_name}\n\n"
+        text += f"📊 Результат: **{new_result} {metric_text}**\n\n"
+        text += f"🆔 ID: {user_id}"
+        text += f" | ⏰ {datetime.now().strftime('%H:%M')}"
+
+        await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=text,
+            parse_mode="Markdown"
+        )
+        logger.info(f"✅ Уведомление о новом рекорде отправлено: {user_name}")
+
+    except Exception as e:
+        logger.error(f"Ошибка отправки уведомления о рекорде: {e}")

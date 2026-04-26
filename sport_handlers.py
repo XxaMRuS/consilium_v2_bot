@@ -16,6 +16,7 @@ from database_postgres import (
 )
 
 from debug_utils import debug_print, log_call
+from formatters import format_number
 import channel_notifications
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,8 @@ def format_workout_result(value, metric):
         seconds = int(value) % 60
         return f"{minutes:02d}:{seconds:02d}"
     else:
-        # Для остальных метрик просто возвращаем значение
-        return str(value)
+        # Для остальных метрик применяем format_number чтобы убрать .0
+        return format_number(value)
 
 # ==================== ГЛАВНОЕ МЕНЮ ====================
 
@@ -79,7 +80,7 @@ async def sport_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ В главное меню", callback_data=SPORT_BACK_TO_MAIN)]
     ]
 
-    text = "🏋️**СПОРТ**\n\nДобро пожаловать! Выбери раздел:"
+    text = "🏋️СПОРТ\n\nДобро пожаловать! Выбери раздел:"
     await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 # ==================== УПРАЖНЕНИЯ ====================
@@ -105,21 +106,69 @@ async def exercises_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         diff_emoji = "😊" if diff == "newbie" else "😎"
 
         button_text = f"{diff_emoji} {name} | {metric_icon} | ⭐{points}"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"{SPORT_WORKOUT_START}_{ex_id}")])
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"sport_exercise_view_{ex_id}")])
 
     keyboard.append([InlineKeyboardButton("🏆 Топ тренировок", callback_data=SPORT_TOP_WORKOUTS)])
     keyboard.append([InlineKeyboardButton("◀️ В меню спорта", callback_data=SPORT_MENU)])
-    await query.edit_message_text("💪 **Упражнения**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.edit_message_text("💪 Упражнения", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 # ==================== ВЫПОЛНЕНИЕ УПРАЖНЕНИЙ ====================
 
 @log_call
-async def start_workout(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Начинает выполнение упражнения."""
+async def show_exercise_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает красивую карточку упражнения с кнопками 'Записать результат' и 'Отмена'."""
     query = update.callback_query
     await query.answer()
 
-    # Формат: sport_workout_start_{exercise_id}
+    # Формат: sport_exercise_view_{exercise_id}
+    exercise_id = int(query.data.split("_")[-1])
+
+    # Получаем информацию об упражнении
+    exercise = get_exercise_by_id(exercise_id)
+    if not exercise:
+        await query.edit_message_text("❌ Упражнение не найдено")
+        return
+
+    ex_id, name, description, metric, points, week, difficulty = exercise
+
+    metric_names = {'reps': 'Повторы', 'time': 'Время', 'weight': 'Вес (кг)', 'distance': 'Дистанция (км)'}
+    metric_text = metric_names.get(metric, metric)
+
+    difficulty_names = {'newbie': 'Новичок', 'beginner': 'Начинающий', 'intermediate': 'Средний', 'advanced': 'Продвинутый'}
+    difficulty_text = difficulty_names.get(difficulty, difficulty)
+
+    metric_icons = {'reps': '🔢', 'time': '⏱', 'weight': '🏋️', 'distance': '🏃'}
+    metric_icon = metric_icons.get(metric, '📊')
+
+    difficulty_emojis = {'newbie': '😊', 'beginner': '🌱', 'intermediate': '💪', 'advanced': '🔥'}
+    difficulty_emoji = difficulty_emojis.get(difficulty, '💪')
+
+    week_text = f"📅 Неделя {week}" if week else ""
+
+    text = (
+        f"🏋️ {name}\n\n"
+        f"{difficulty_emoji} Сложность: {difficulty_text}\n"
+        f"{metric_icon} Тип: {metric_text}\n"
+        f"⭐ Очки: {format_number(points)}\n"
+        f"{week_text}\n\n"
+        f"📝 Описание:\n{description}\n\n"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("✍️ Записать результат", callback_data=f"sport_exercise_do_{ex_id}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data=SPORT_EXERCISES)]
+    ]
+
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+
+
+@log_call
+async def start_workout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает формат ввода и начинает ввод результата упражнения."""
+    query = update.callback_query
+    await query.answer()
+
+    # Формат: sport_exercise_do_{exercise_id}
     exercise_id = int(query.data.split("_")[-1])
 
     # Сохраняем ID упражнения
@@ -145,12 +194,11 @@ async def start_workout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         example = "60"
 
     text = (
-        f"🏋️ **{name}**\n\n"
+        f"🏋️ {name}\n\n"
         f"📊 Метрика: {metric_text}\n"
         f"📝 {description}\n\n"
-        f"Введите результат {input_format}\n"
+        f"📝 Введите результат {input_format}\n"
         f"📌 Пример: {example}\n\n"
-        f"📹 Нам нужно убедиться в правильности выполнения упражнения. Пришлите ссылку на видео или фото."
     )
 
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=SPORT_EXERCISES)]]
@@ -217,8 +265,8 @@ async def input_workout_result(update: Update, context: ContextTypes.DEFAULT_TYP
 
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=SPORT_EXERCISES)]]
     await update.message.reply_text(
-        f"✅ Результат: {result_value}\n\n"
-        f"📎 **Отправьте ссылку на видео (YouTube, Яндекс.Диск) или прикрепите видео/фото!**\n\n"
+        f"✅ Результат: {format_number(result_value)}\n\n"
+        f"📎 Отправьте ссылку на видео (YouTube, Яндекс.Диск) или прикрепите видео/фото!\n\n"
         f"⚠️ Без доказательства упражнение не будет засчитано.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
@@ -269,7 +317,7 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
         else:
             keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=SPORT_EXERCISES)]]
             await update.message.reply_text(
-                "❌ **Пожалуйста, отправьте ссылку на видео (начинается с http:// или https://)**\n\n"
+                "❌ Пожалуйста, отправьте ссылку на видео (начинается с http:// или https://)\n\n"
                 "Или прикрепите видео/фото файл.",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
@@ -279,7 +327,7 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
         # Если нет ничего - требуем загрузить
         keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=SPORT_EXERCISES)]]
         await update.message.reply_text(
-            "❌ **Обязательно приложите фото, видео или ссылку на видео!**\n\n"
+            "❌ Обязательно приложите фото, видео или ссылку на видео!\n\n"
             "Без доказательства упражнение не будет засчитано.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='Markdown'
@@ -305,12 +353,34 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         print(f"DEBUG calling add_workout: user_id={user_id}, exercise_id={exercise_id}, result_value={formatted_result}, proof_link={proof_link}, metric={metric}")
 
+        # Создаём callback для уведомлений о рекордах
+        async def notify_record_callback(user_id, exercise_id, new_result, metric_type):
+            try:
+                from database_postgres import get_exercise_by_id, get_user_info
+                exercise = get_exercise_by_id(exercise_id)
+                exercise_name = exercise[1] if exercise else None
+                user = get_user_info(user_id)
+                user_name = user[1] if user else None
+
+                await channel_notifications.notify_new_record(
+                    context.bot,
+                    user_id=user_id,
+                    exercise_id=exercise_id,
+                    new_result=new_result,
+                    metric_type=metric_type,
+                    user_name=user_name,
+                    exercise_name=exercise_name
+                )
+            except Exception as e:
+                logger.error(f"Ошибка в notify_record_callback: {e}")
+
         workout_id, achievements = add_workout(
             user_id=user_id,
             exercise_id=exercise_id,
             result_value=str(formatted_result),
             video_link=proof_link,
-            metric=metric
+            metric=metric,
+            notify_record_callback=notify_record_callback
         )
 
         # Начисляем PvP очки на основе настроек конвертации
@@ -357,8 +427,8 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
     if success:
         formatted_result = format_workout_result(result_value, metric) if metric else str(result_value)
         text = (
-            f"✅ **УПРАЖНЕНИЕ ВЫПОЛНЕНО!**\n\n"
-            f"📊 Результат: {formatted_result}\n\n"
+            f"✅ УПРАЖНЕНИЕ ВЫПОЛНЕНО!\n\n"
+            f"📊 Результат: {format_number(formatted_result)}\n\n"
             f"Отличная работа! Продолжайте в том же духе! 💪"
         )
         keyboard = [[InlineKeyboardButton("💪 К упражнениям", callback_data=SPORT_EXERCISES)]]
@@ -419,7 +489,7 @@ async def challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard.append([InlineKeyboardButton("🏆 Топ челленджей", callback_data=SPORT_TOP_CHALLENGES)])
     keyboard.append([InlineKeyboardButton("◀️ В меню спорта", callback_data=SPORT_MENU)])
-    await query.edit_message_text("🏆 **Челленджи**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.edit_message_text("🏆 Челленджи", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 # ==================== КОМПЛЕКСЫ ====================
 
@@ -464,7 +534,7 @@ async def complexes_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard.append([InlineKeyboardButton("🏆 Топ комплексов", callback_data=SPORT_TOP_COMPLEXES)])
     keyboard.append([InlineKeyboardButton("◀️ В меню спорта", callback_data=SPORT_MENU)])
-    await query.edit_message_text("📦 **Комплексы**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.edit_message_text("📦 Комплексы", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 
 @log_call
@@ -496,28 +566,49 @@ async def show_complex_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ Упражнения не найдены", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # Формируем описание
-    text = f"🏋️ **КОМПЛЕКС: {name}**\n\n"
-    if description:
-        text += f"📝 {description}\n\n"
-
-    text += f"⭐ Очки: {points}\n"
-
-    # Перевод сложности на русский
+    # Формируем красивую карточку комплекса
     difficulty_names = {
         'beginner': '😊 Новичок',
-        'pro': '😎 Эксперт'
+        'pro': '😎 Эксперт',
+        'newbie': '🌱 Начинающий',
+        'intermediate': '💪 Средний',
+        'advanced': '🔥 Продвинутый'
     }
     difficulty_text = difficulty_names.get(difficulty, difficulty)
 
-    text += f"📊 Сложность: {difficulty_text}\n\n"
+    metric_icons = {'reps': '🔢', 'time': '⏱', 'weight': '🏋️', 'distance': '🏃'}
+    metric_names = {'reps': 'Повторы', 'time': 'Время (мин)', 'weight': 'Вес (кг)', 'distance': 'Дистанция (км)'}
 
-    text += "**Упражнения:**\n"
+    text = f"🏋️‍♂️ {name}\n\n"
+
+    if description:
+        text += f"📝 Описание:\n{description}\n\n"
+
+    text += f"⭐ Очки: {format_number(points)}\n"
+    text += f"🎯 Сложность: {difficulty_text}\n"
+    text += f"📊 Упражнений: {len(exercises)}\n\n"
+
+    text += "🏋️ Упражнения:\n\n"
     for i, ex in enumerate(exercises, 1):
-        ex_name = ex[1] if len(ex) > 1 else "Неизвестное"
-        ex_metric = ex[3] if len(ex) > 3 else ""
-        ex_points = ex[4] if len(ex) > 4 else 0
-        text += f"{i}. {ex_name} ({ex_metric}) - ⭐{ex_points}\n"
+        ex_id = ex[1] if len(ex) > 1 else 0
+        ex_name = ex[2] if len(ex) > 2 else "Неизвестное"
+        ex_desc = ex[3] if len(ex) > 3 else ""
+        ex_metric = ex[4] if len(ex) > 4 else ""
+        ex_reps = ex[5] if len(ex) > 5 else ""
+        ex_points = ex[6] if len(ex) > 6 else 0
+
+        metric_icon = metric_icons.get(ex_metric, '📊')
+        metric_text = metric_names.get(ex_metric, ex_metric)
+
+        text += f"{i}. **{ex_name}**\n"
+        if ex_desc:
+            # Обрезаем слишком длинное описание
+            short_desc = ex_desc[:50] + "..." if len(ex_desc) > 50 else ex_desc
+            text += f"   📝 {short_desc}\n"
+        text += f"   📊 Метрика: {metric_text}"
+        if ex_reps:
+            text += f" | 🔢 Повторов: {format_number(ex_reps)}"
+        text += f"\n   ⭐ Очки: {format_number(ex_points)}\n\n"
 
     keyboard = [
         [InlineKeyboardButton("💪 Начать выполнение", callback_data=f"{SPORT_COMPLEX_DO}_{complex_id}")],
@@ -577,13 +668,13 @@ async def start_complex_execution(update: Update, context: ContextTypes.DEFAULT_
     records = get_complex_records(complex_id, user_level, limit=3)
 
     # Предлагаем варианты выполнения
-    text = f"🏋️ **ВЫПОЛНЕНИЕ КОМПЛЕКСА**\n\n"
-    text += f"📦 **{name}**\n\n"
+    text = f"🏋️ ВЫПОЛНЕНИЕ КОМПЛЕКСА\n\n"
+    text += f"📦 {name}\n\n"
     text += f"Упражнений: {len(exercises)}\n\n"
 
     # Добавляем рекорды если есть
     if records:
-        text += f"🏆 **Топ-3 рекордов:**\n"
+        text += f"🏆 Топ-3 рекордов:\n"
         medals = ["🥇", "🥈", "🥉"]
         for i, record in enumerate(records[:3]):
             medal = medals[i] if i < len(medals) else "  "
@@ -642,8 +733,8 @@ async def request_single_video(update: Update, context: ContextTypes.DEFAULT_TYP
             await query.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = f"📹 **ЕДИНОЕ ВИДЕО ДЛЯ ВСЕХ УПРАЖНЕНИЙ**\n\n"
-    text += f"📦 **{complex_data['name']}**\n\n"
+    text = f"📹 ЕДИНОЕ ВИДЕО ДЛЯ ВСЕХ УПРАЖНЕНИЙ\n\n"
+    text += f"📦 {complex_data['name']}\n\n"
     text += f"Отправьте ссылку на видео с выполнением всех упражнений комплекса.\n\n"
     text += f"После этого вы будете вводить количество или время для каждого упражнения."
 
@@ -682,8 +773,18 @@ async def start_complex_exercise(update: Update, context: ContextTypes.DEFAULT_T
     exercise = exercises[current_index]
     ex_id = exercise[1]  # exercise_id
     ex_name = exercise[2] if len(exercise) > 2 else "Упражнение"
-    ex_metric = exercise[3] if len(exercise) > 3 else ""
-    ex_reps = exercise[4] if len(exercise) > 4 else ""
+    ex_desc = exercise[3] if len(exercise) > 3 else ""
+    ex_metric_raw = exercise[4] if len(exercise) > 4 else ""
+    ex_reps = exercise[5] if len(exercise) > 5 else ""
+
+    # Перевод метрик
+    metric_names = {
+        'reps': 'Повторы',
+        'time': 'Время (мин)',
+        'weight': 'Вес (кг)',
+        'distance': 'Дистанция (км)'
+    }
+    ex_metric = metric_names.get(ex_metric_raw, ex_metric_raw)
 
     # Сохраняем ID текущего упражнения
     context.user_data['current_exercise_id'] = ex_id
@@ -696,9 +797,13 @@ async def start_complex_exercise(update: Update, context: ContextTypes.DEFAULT_T
     records = get_complex_records(complex_data['id'], user_level, limit=3)
 
     # Формируем текст
-    text = f"🏋️ **ВЫПОЛНЕНИЕ КОМПЛЕКСА**\n\n"
-    text += f"📦 **{complex_data['name']}**\n\n"
-    text += f"Упражнение {current_index + 1}/{len(exercises)}: **{ex_name}**\n\n"
+    text = f"🏋️ ВЫПОЛНЕНИЕ КОМПЛЕКСА\n\n"
+    text += f"📦 {complex_data['name']}\n\n"
+    text += f"🏋️ Упражнение {current_index + 1}/{len(exercises)}: **{ex_name}**\n\n"
+
+    # Добавляем описание если есть
+    if ex_desc:
+        text += f"📝 {ex_desc}\n\n"
 
     if ex_metric:
         text += f"📊 Метрика: {ex_metric} | "
@@ -709,7 +814,7 @@ async def start_complex_exercise(update: Update, context: ContextTypes.DEFAULT_T
 
     # Добавляем рекорды если есть
     if records:
-        text += f"🏆 **Рекорды ({user_level}):**\n"
+        text += f"🏆 Рекорды ({user_level}):\n"
         medals = ["🥇", "🥈", "🥉"]
         for i, record in enumerate(records[:3]):
             medal = medals[i] if i < len(medals) else "  "
@@ -720,13 +825,14 @@ async def start_complex_exercise(update: Update, context: ContextTypes.DEFAULT_T
 
     text += f"\n"
 
-    # Запрос в зависимости от метрики
-    if ex_metric == 'time':
-        text += f"⏰ Введите время (формат: 23:15):\n"
+    # Запрос в зависимости от метрики - ПЕРВЫМ ДЕЛАЕМ!
+    if ex_metric_raw == 'time':
+        text += f"⏰ Введите время, за которое вы сделали упражнение (формат: 23:15):\n\n"
     else:
-        text += f"🔢 Введите количество:\n"
+        text += f"🔢 Введите количество, которое вы сделали:\n\n"
 
-    text += f"📹 Нам нужно убедиться в правильности выполнения упражнения. Пришлите ссылку на видео или фото."
+    # ПОТОМ просим видео
+    text += f"📹 После этого пришлите ссылку на видео или фото для подтверждения."
 
     keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data=SPORT_COMPLEXES)]]
 
@@ -793,12 +899,12 @@ async def complete_complex(update: Update, context: ContextTypes.DEFAULT_TYPE):
         records = get_complex_records(complex_data['id'], user_level, limit=3)
 
         # Формируем красивую финальную карточку
-        text = f"🏆 **КОМПЛЕКС ВЫПОЛНЕН!** 🏆\n\n"
-        text += f"📦 **{complex_data['name']}**\n\n"
+        text = f"🏆 КОМПЛЕКС ВЫПОЛНЕН! 🏆\n\n"
+        text += f"📦 {complex_data['name']}\n\n"
 
         # Добавляем рекорды если есть
         if records:
-            text += f"🏆 **Топ-3 рекордов:**\n"
+            text += f"🏆 Топ-3 рекордов:\n"
             medals = ["🥇", "🥈", "🥉"]
             for i, record in enumerate(records[:3]):
                 medal = medals[i] if i < len(medals) else "  "
@@ -862,25 +968,28 @@ async def handle_complex_exercise_result(update: Update, context: ContextTypes.D
 
         # Проверяем, является ли это ссылкой на видео
         if result_value.startswith(('http://', 'https://')):
-            # Это ссылка на видео
+            # Это ссылка на видео - пользователь сначала отправил видео
+            # Сохраняем видео и просим ввести результат
+            # Получаем метрику текущего упражнения для правильного текста
+            exercises = complex_data['exercises']
+            current_index = complex_data['current_index']
+            exercise = exercises[current_index]
+            ex_metric_raw = exercise[4] if len(exercise) > 4 else ""
+
+            if ex_metric_raw == 'time':
+                prompt_text = "Теперь введите время, за которое вы сделали упражнение."
+            else:
+                prompt_text = "Теперь введите количество, которое вы сделали."
+
             if complex_data.get('single_video_mode') and not complex_data.get('single_video_url'):
                 # Режим единого видео
                 complex_data['single_video_url'] = result_value
-                await message.reply_text("✅ Видео принято! Теперь введите количество или время для каждого упражнения.")
-                await start_complex_exercise(update, context)
+                await message.reply_text(f"✅ Видео принято! {prompt_text}")
                 return True
             else:
                 # Режим отдельных видео - сохраняем для текущего упражнения
-                current_index = complex_data['current_index']
                 context.user_data[f'video_exercise_{current_index}'] = result_value
-                await message.reply_text("✅ Видео/фото принято! Теперь введите количество или время для этого упражнения.")
-                return True
-
-        # Проверяем, есть ли доказательство (для режима с отдельными видео)
-        if not complex_data.get('single_video_mode'):
-            # Нужно проверить, было ли уже загружено видео для этого упражнения
-            if not context.user_data.get(f'video_exercise_{complex_data["current_index"]}'):
-                await message.reply_text("❌ Сначала отправьте ссылку на видео или фото, затем введите количество или время.")
+                await message.reply_text(f"✅ Видео/фото принято! {prompt_text}")
                 return True
 
         # Текущее упражнение
@@ -950,7 +1059,17 @@ async def handle_complex_media(update: Update, context: ContextTypes.DEFAULT_TYP
         current_index = complex_data['current_index']
         context.user_data[f'video_exercise_{current_index}'] = video_link
 
-        await message.reply_text("✅ Видео/фото принято! Теперь введите количество или время для этого упражнения.")
+        # Получаем метрику для правильного текста
+        exercises = complex_data['exercises']
+        exercise = exercises[current_index]
+        ex_metric_raw = exercise[4] if len(exercise) > 4 else ""
+
+        if ex_metric_raw == 'time':
+            prompt_text = "Теперь введите время, за которое вы сделали упражнение."
+        else:
+            prompt_text = "Теперь введите количество, которое вы сделали."
+
+        await message.reply_text(f"✅ Видео/фото принято! {prompt_text}")
         return True
 
     except Exception as e:
@@ -995,7 +1114,7 @@ async def sport_ratings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ В меню спорта", callback_data=SPORT_MENU)]
     ]
 
-    await query.edit_message_text("📊 **РЕЙТИНГИ**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.edit_message_text("📊 РЕЙТИНГИ", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 @log_call
 async def sport_top_workouts(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1012,7 +1131,7 @@ async def sport_top_workouts(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text("Пока нет данных.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = "💪 **ТОП-10 ТРЕНИРОВОК**\n\n"
+    text = "💪 ТОП-10 ТРЕНИРОВОК\n\n"
     for i, u in enumerate(top, 1):
         username = f"@{u[1]}" if u[1] else ""
         text += f"{i}. {u[0]} {username} - {u[2]} тренировок\n"
@@ -1035,7 +1154,7 @@ async def sport_top_challenges(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_text("Пока нет данных.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = "🏆 **ТОП-10 ЧЕЛЛЕНДЖЕЙ**\n\n"
+    text = "🏆 ТОП-10 ЧЕЛЛЕНДЖЕЙ\n\n"
     for i, u in enumerate(top, 1):
         username = f"@{u[1]}" if u[1] else ""
         text += f"{i}. {u[0]} {username} - {u[2]} челленджей\n"
@@ -1058,7 +1177,7 @@ async def sport_top_complexes(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("Пока нет данных.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = "📦 **ТОП-10 КОМПЛЕКСОВ**\n\n"
+    text = "📦 ТОП-10 КОМПЛЕКСОВ\n\n"
     for i, u in enumerate(top, 1):
         username = f"@{u[1]}" if u[1] else ""
         text += f"{i}. {u[0]} {username} - {u[2]} комплексов\n"
@@ -1078,7 +1197,7 @@ async def sport_my_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     workouts, challenges, complexes = get_user_stats(user_id)
 
     text = (
-        f"📈 **МОЯ СТАТИСТИКА**\n\n"
+        f"📈 МОЯ СТАТИСТИКА\n\n"
         f"💪 Тренировок: {workouts}\n"
         f"🏆 Челленджей: {challenges}\n"
         f"📦 Комплексов: {complexes}\n\n"
@@ -1091,7 +1210,10 @@ async def sport_my_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==================== CONVERSATION HANDLER ДЛЯ УПРАЖНЕНИЙ ====================
 
 workout_conversation = ConversationHandler(
-    entry_points=[CallbackQueryHandler(start_workout, pattern='^sport_workout_start_')],
+    entry_points=[
+        CallbackQueryHandler(start_workout, pattern='^sport_workout_start_'),
+        CallbackQueryHandler(start_workout, pattern='^sport_exercise_do_')
+    ],
     states={
         WORKOUT_INPUT: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, input_workout_result),

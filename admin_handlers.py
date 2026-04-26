@@ -11,6 +11,8 @@ from database_postgres import (
     get_admin_level_name, get_user_info
 )
 import channel_notifications
+from formatters import format_number
+from cache_manager import DataCache
 
 logger = logging.getLogger(__name__)
 
@@ -876,6 +878,8 @@ async def admin_exercise_add_diff(update: Update, context: ContextTypes.DEFAULT_
         exercise_id = add_exercise(name, desc, metric, points, week, difficulty)
 
         if exercise_id:
+            # Инвалидируем кэш упражнений, чтобы список обновился сразу
+            DataCache.invalidate_exercises()
             # Отправляем уведомление в канал
             try:
                 exercise_data = {
@@ -1271,6 +1275,9 @@ async def admin_challenge_add_bonus_points(update: Update, context: ContextTypes
         challenge_id = add_challenge(name, desc, 'challenge', None, metric, target_value, start_date, end_date, bonus_points, selected_exercises)
 
         if challenge_id:
+            # Инвалидируем кэш челленджей, чтобы список обновился сразу
+            DataCache.invalidate_challenges()
+
             # Отправляем уведомление в канал
             try:
                 challenge_data = {
@@ -1292,12 +1299,21 @@ async def admin_challenge_add_bonus_points(update: Update, context: ContextTypes
                 if ex:
                     exercise_names.append(ex[1])  # ex[1] - название упражнения
 
+            # Перевод метрик
+            metric_names = {
+                'reps': 'Повторы',
+                'time': 'Время (мин)',
+                'weight': 'Вес (кг)',
+                'distance': 'Дистанция (км)'
+            }
+            metric_text = metric_names.get(metric, metric)
+
             exercises_text = "\n".join([f"• {name}" for name in exercise_names])
             keyboard = [[InlineKeyboardButton("◀️ В челленджи", callback_data="admin_challenges")]]
             await update.message.reply_text(
                 f"✅ **ЧЕЛЛЕНДЖ СОЗДАН**\n\n"
                 f"🏆 Название: {name}\n"
-                f"📊 Цель: {target_value} {metric}\n"
+                f"📊 Цель: {format_number(target_value)} {metric_text}\n"
                 f"📅 Период: {start_date} - {end_date}\n"
                 f"⭐ Бонус: {bonus_points} очков\n\n"
                 f"🏋️ **Упражнения ({len(selected_exercises)}):**\n{exercises_text}\n\n"
@@ -1375,7 +1391,7 @@ async def admin_view_challenge_callback(update: Update, context: ContextTypes.DE
     text = (
         f"🏆 **{name}**\n\n"
         f"📝 **Описание:** {description}\n\n"
-        f"📊 **Цель:** {target_value} {metric_text}\n"
+        f"📊 **Цель:** {format_number(target_value)} {metric_text}\n"
         f"📅 **Период:** {start_date_str} - {end_date_str}\n"
         f"⭐ **Бонус:** {bonus_points} очков\n"
         f"📈 **Статус:** {status_text}\n"
@@ -1460,6 +1476,8 @@ async def admin_confirm_delete_challenge_callback(update: Update, context: Conte
     # Удаляем челлендж из БД
     try:
         delete_challenge(challenge_id)
+        # Инвалидируем кэш челленджей, чтобы список обновился сразу
+        DataCache.invalidate_challenges()
         text = f"✅ **ЧЕЛЛЕНДЖ УДАЛЁН**\n\nЧеллендж **{challenge_name}** успешно удалён!"
     except Exception as e:
         logger.error(f"Ошибка удаления челленджа: {e}")
@@ -2462,7 +2480,7 @@ async def admin_view_exercise_callback(update: Update, context: ContextTypes.DEF
         f"🏋️ **{name}**\n\n"
         f"📝 **Описание:** {description}\n\n"
         f"📊 **Тип:** {metric_text}\n"
-        f"⭐ **Очки:** {points}\n"
+        f"⭐ **Очки:** {format_number(points)}\n"
         f"🎯 **Сложность:** {difficulty_text}\n"
         f"📅 **Неделя:** {week_text}\n"
     )
@@ -2697,6 +2715,8 @@ async def admin_confirm_delete_exercise_callback(update: Update, context: Contex
     # Удаляем упражнение из БД
     try:
         delete_exercise(exercise_id)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
         text = f"✅ **УПРАЖНЕНИЕ УДАЛЕНО**\n\nУпражнение **{exercise_name}** успешно удалено!"
     except Exception as e:
         logger.error(f"Ошибка удаления упражнения: {e}")
@@ -2733,6 +2753,8 @@ async def admin_edit_exercise_name_input(update: Update, context: ContextTypes.D
 
     try:
         update_exercise(exercise_id, name=new_name)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
         await update.message.reply_text(f"✅ Название изменено на: {new_name}")
     except Exception as e:
         logger.error(f"Ошибка обновления названия: {e}")
@@ -2762,6 +2784,8 @@ async def admin_edit_exercise_desc_input(update: Update, context: ContextTypes.D
 
     try:
         update_exercise(exercise_id, description=new_desc)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
         await update.message.reply_text("✅ Описание обновлено")
     except Exception as e:
         logger.error(f"Ошибка обновления описания: {e}")
@@ -2789,6 +2813,8 @@ async def admin_edit_exercise_metric_select(update: Update, context: ContextType
 
     try:
         update_exercise(exercise_id, metric=metric)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
 
         metric_names = {
             'reps': 'Повторы',
@@ -2833,6 +2859,8 @@ async def admin_edit_exercise_points_input(update: Update, context: ContextTypes
 
     try:
         update_exercise(exercise_id, points=points)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
         await update.message.reply_text(f"✅ Очки изменены на: {points}")
     except Exception as e:
         logger.error(f"Ошибка обновления очков: {e}")
@@ -2863,6 +2891,8 @@ async def admin_edit_exercise_diff_select(update: Update, context: ContextTypes.
 
     try:
         update_exercise(exercise_id, difficulty=difficulty)
+        # Инвалидируем кэш упражнений, чтобы список обновился сразу
+        DataCache.invalidate_exercises()
 
         difficulty_text = 'Новичок' if difficulty == 'newbie' else 'Эксперт'
         await query.edit_message_text(

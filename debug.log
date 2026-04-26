@@ -11063,3 +11063,854 @@ NameError: name 'user_id' is not defined
 2026-04-25 11:15:38,632 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
 2026-04-25 11:15:38,632 - ============================================================
 
+2026-04-25 21:21:36,715 - 
+============================================================
+2026-04-25 21:21:36,716 - 🔵 ВЫЗОВ ФУНКЦИИ: wrapper
+2026-04-25 21:21:36,716 - 🕐 Время: 21:21:36.716
+2026-04-25 21:21:36,716 -    📨 callback_data: admin
+2026-04-25 21:21:36,717 -    👤 user_id: 173705485
+2026-04-25 21:21:36,717 -    📦 user_data: {}
+2026-04-25 21:21:36,717 -    🏷️ conversation_state: N/A
+2026-04-25 21:21:38,690 - 🔴 ВОЗВРАТ: wrapper -> None
+2026-04-25 21:21:38,690 - ============================================================
+
+2026-04-25 21:21:46,840 - 
+============================================================
+2026-04-25 21:21:46,840 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:21:46,841 - 🕐 Время: 21:21:46.841
+2026-04-25 21:21:46,841 -    📨 callback_data: pvp
+2026-04-25 21:21:46,841 -    👤 user_id: 173705485
+2026-04-25 21:21:46,841 -    📦 user_data: {}
+2026-04-25 21:21:46,841 -    🏷️ conversation_state: N/A
+2026-04-25 21:21:46,841 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:21:49,673 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:21:49,673 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:21:49,673 - ============================================================
+
+2026-04-25 21:29:31,520 - 
+============================================================
+2026-04-25 21:29:31,520 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:29:31,520 - 🕐 Время: 21:29:31.520
+2026-04-25 21:29:31,520 -    📨 callback_data: pvp
+2026-04-25 21:29:31,520 -    👤 user_id: 173705485
+2026-04-25 21:29:31,520 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:29:31,520 -    🏷️ conversation_state: N/A
+2026-04-25 21:29:31,520 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:29:35,628 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:29:35,628 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:29:35,628 - ============================================================
+
+2026-04-25 21:29:38,025 - 
+============================================================
+2026-04-25 21:29:38,025 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:29:38,025 - 🕐 Время: 21:29:38.025
+2026-04-25 21:29:38,025 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:29:38,025 -    👤 user_id: 173705485
+2026-04-25 21:29:38,025 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:29:38,025 -    🏷️ conversation_state: N/A
+2026-04-25 21:29:38,026 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:29:50,798 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:29:50,798 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:29:50,798 - ============================================================
+
+2026-04-25 21:29:50,798 - 
+============================================================
+2026-04-25 21:29:50,799 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:29:50,799 - 🕐 Время: 21:29:50.799
+2026-04-25 21:29:50,799 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:29:50,799 -    👤 user_id: 173705485
+2026-04-25 21:29:50,799 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:29:50,799 -    🏷️ conversation_state: N/A
+2026-04-25 21:29:50,799 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:30:05,990 - 💥 ОШИБКА в pvp_show_challenge_candidates: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-04-25 21:30:06,003 - Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\debug_utils.py", line 73, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\pvp_handlers.py", line 238, in pvp_show_challenge_candidates
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_callbackquery.py", line 241, in edit_message_text
+    return await self.message.edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_message.py", line 2446, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1453, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 334, in decorator
+    result = await func(*args, **kwargs)  # skipcq: PYL-E1102
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 3296, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 488, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 515, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 422, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 306, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 453, in _do_post
+    return await request.post(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 165, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper
+    raise BadRequest(message)
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+
+2026-04-25 21:30:06,003 - ============================================================
+
+2026-04-25 21:30:06,129 - 
+============================================================
+2026-04-25 21:30:06,129 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_select_bet
+2026-04-25 21:30:06,129 - 🕐 Время: 21:30:06.129
+2026-04-25 21:30:06,129 -    📨 callback_data: pvp_challenge_user_5521803029
+2026-04-25 21:30:06,129 -    👤 user_id: 173705485
+2026-04-25 21:30:06,129 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:30:06,129 -    🏷️ conversation_state: N/A
+2026-04-25 21:30:06,129 - 🔥 pvp_handlers: pvp_select_bet: ВЫЗВАНА
+2026-04-25 21:30:10,474 - 📤 pvp_select_bet: ВОЗВРАТ
+2026-04-25 21:30:10,474 - 🔴 ВОЗВРАТ: pvp_select_bet -> None
+2026-04-25 21:30:10,474 - ============================================================
+
+2026-04-25 21:30:15,094 - 
+============================================================
+2026-04-25 21:30:15,095 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_send_challenge_with_bet
+2026-04-25 21:30:15,095 - 🕐 Время: 21:30:15.095
+2026-04-25 21:30:15,095 -    📨 callback_data: pvp_bet_5521803029_25
+2026-04-25 21:30:15,095 -    👤 user_id: 173705485
+2026-04-25 21:30:15,095 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:30:15,095 -    🏷️ conversation_state: N/A
+2026-04-25 21:30:15,095 - 🔥 pvp_handlers: pvp_send_challenge_with_bet: ВЫЗВАНА
+2026-04-25 21:30:21,175 - 📤 pvp_send_challenge_with_bet: ВОЗВРАТ (недостаточно очков)
+2026-04-25 21:30:21,175 - 🔴 ВОЗВРАТ: pvp_send_challenge_with_bet -> None
+2026-04-25 21:30:21,175 - ============================================================
+
+2026-04-25 21:30:23,302 - 
+============================================================
+2026-04-25 21:30:23,302 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:30:23,302 - 🕐 Время: 21:30:23.302
+2026-04-25 21:30:23,302 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:30:23,302 -    👤 user_id: 173705485
+2026-04-25 21:30:23,303 -    📦 user_data: {'pvp_transfer_reason': 'Подарок от МаксЫмчика'}
+2026-04-25 21:30:23,303 -    🏷️ conversation_state: N/A
+2026-04-25 21:30:23,303 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:30:36,691 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:30:36,691 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:30:36,691 - ============================================================
+
+2026-04-25 21:32:52,014 - 
+============================================================
+2026-04-25 21:32:52,015 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:32:52,015 - 🕐 Время: 21:32:52.015
+2026-04-25 21:32:52,016 -    📨 callback_data: pvp
+2026-04-25 21:32:52,016 -    👤 user_id: 173705485
+2026-04-25 21:32:52,016 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:32:52,016 -    🏷️ conversation_state: N/A
+2026-04-25 21:32:52,016 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:32:56,277 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:32:56,278 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:32:56,278 - ============================================================
+
+2026-04-25 21:33:04,401 - 
+============================================================
+2026-04-25 21:33:04,401 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:33:04,401 - 🕐 Время: 21:33:04.401
+2026-04-25 21:33:04,402 -    📨 callback_data: pvp
+2026-04-25 21:33:04,402 -    👤 user_id: 173705485
+2026-04-25 21:33:04,402 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:33:04,402 -    🏷️ conversation_state: N/A
+2026-04-25 21:33:04,402 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:33:11,262 - 💥 ОШИБКА в pvp_main_menu: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-04-25 21:33:11,267 - Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\debug_utils.py", line 73, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\pvp_handlers.py", line 169, in pvp_main_menu
+    await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_callbackquery.py", line 241, in edit_message_text
+    return await self.message.edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_message.py", line 2446, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1453, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 334, in decorator
+    result = await func(*args, **kwargs)  # skipcq: PYL-E1102
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 3296, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 488, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 515, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 422, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 306, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 453, in _do_post
+    return await request.post(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 165, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper
+    raise BadRequest(message)
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+
+2026-04-25 21:33:11,267 - ============================================================
+
+2026-04-25 21:33:11,272 - 
+============================================================
+2026-04-25 21:33:11,272 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:33:11,272 - 🕐 Время: 21:33:11.272
+2026-04-25 21:33:11,272 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:33:11,272 -    👤 user_id: 173705485
+2026-04-25 21:33:11,272 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:33:11,273 -    🏷️ conversation_state: N/A
+2026-04-25 21:33:11,273 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:33:28,592 - 💥 ОШИБКА в pvp_show_challenge_candidates: Timed out
+2026-04-25 21:33:28,608 - Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\streams\tls.py", line 175, in _call_sslobject_method
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\ssl.py", line 916, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLWantReadError: The operation did not complete (read) (_ssl.c:1010)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 69, in start_tls
+    ssl_stream = await anyio.streams.tls.TLSStream.wrap(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\streams\tls.py", line 167, in wrap
+    await wrapper._call_sslobject_method(ssl_object.do_handshake)
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\streams\tls.py", line 182, in _call_sslobject_method
+    data = await self.transport_stream.receive()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\asyncio\locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 1c8284f8200; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 78, in start_tls
+    raise exc
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 68, in start_tls
+    with anyio.fail_after(timeout):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_async\connection.py", line 86, in handle_async_request
+    raise exc
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_async\connection.py", line 63, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_async\connection.py", line 150, in _connect
+    stream = await stream.start_tls(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 66, in start_tls
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 183, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_client.py", line 1533, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_client.py", line 1620, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_client.py", line 1648, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_client.py", line 1685, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_client.py", line 1722, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\debug_utils.py", line 73, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\pvp_handlers.py", line 238, in pvp_show_challenge_candidates
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_callbackquery.py", line 241, in edit_message_text
+    return await self.message.edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_message.py", line 2446, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1453, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 334, in decorator
+    result = await func(*args, **kwargs)  # skipcq: PYL-E1102
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 3296, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 488, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 515, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 422, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 306, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 453, in _do_post
+    return await request.post(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 165, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 288, in _request_wrapper
+    raise exc
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 274, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 200, in do_request
+    raise TimedOut from err
+telegram.error.TimedOut: Timed out
+
+2026-04-25 21:33:28,614 - ============================================================
+
+2026-04-25 21:33:28,894 - 
+============================================================
+2026-04-25 21:33:28,894 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:33:28,894 - 🕐 Время: 21:33:28.894
+2026-04-25 21:33:28,894 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:33:28,894 -    👤 user_id: 173705485
+2026-04-25 21:33:28,894 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:33:28,894 -    🏷️ conversation_state: N/A
+2026-04-25 21:33:28,894 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:33:46,027 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:33:46,027 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:33:46,028 - ============================================================
+
+2026-04-25 21:33:55,391 - 
+============================================================
+2026-04-25 21:33:55,391 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_select_bet
+2026-04-25 21:33:55,391 - 🕐 Время: 21:33:55.391
+2026-04-25 21:33:55,391 -    📨 callback_data: pvp_challenge_user_5521803029
+2026-04-25 21:33:55,391 -    👤 user_id: 173705485
+2026-04-25 21:33:55,391 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:33:55,391 -    🏷️ conversation_state: N/A
+2026-04-25 21:33:55,391 - 🔥 pvp_handlers: pvp_select_bet: ВЫЗВАНА
+2026-04-25 21:33:58,025 - 📤 pvp_select_bet: ВОЗВРАТ
+2026-04-25 21:33:58,025 - 🔴 ВОЗВРАТ: pvp_select_bet -> None
+2026-04-25 21:33:58,025 - ============================================================
+
+2026-04-25 21:33:59,617 - 
+============================================================
+2026-04-25 21:33:59,617 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:33:59,618 - 🕐 Время: 21:33:59.617
+2026-04-25 21:33:59,618 -    📨 callback_data: pvp
+2026-04-25 21:33:59,618 -    👤 user_id: 173705485
+2026-04-25 21:33:59,618 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:33:59,618 -    🏷️ conversation_state: N/A
+2026-04-25 21:33:59,618 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:34:06,272 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:34:06,272 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:34:06,272 - ============================================================
+
+2026-04-25 21:34:09,248 - 
+============================================================
+2026-04-25 21:34:09,248 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:34:09,248 - 🕐 Время: 21:34:09.248
+2026-04-25 21:34:09,248 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:34:09,248 -    👤 user_id: 173705485
+2026-04-25 21:34:09,248 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:34:09,248 -    🏷️ conversation_state: N/A
+2026-04-25 21:34:09,248 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:34:23,329 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:34:23,329 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:34:23,329 - ============================================================
+
+2026-04-25 21:34:26,922 - 
+============================================================
+2026-04-25 21:34:26,922 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_select_bet
+2026-04-25 21:34:26,922 - 🕐 Время: 21:34:26.922
+2026-04-25 21:34:26,922 -    📨 callback_data: pvp_challenge_user_5521803029
+2026-04-25 21:34:26,922 -    👤 user_id: 173705485
+2026-04-25 21:34:26,922 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:34:26,922 -    🏷️ conversation_state: N/A
+2026-04-25 21:34:26,922 - 🔥 pvp_handlers: pvp_select_bet: ВЫЗВАНА
+2026-04-25 21:34:30,407 - 📤 pvp_select_bet: ВОЗВРАТ
+2026-04-25 21:34:30,407 - 🔴 ВОЗВРАТ: pvp_select_bet -> None
+2026-04-25 21:34:30,407 - ============================================================
+
+2026-04-25 21:34:36,248 - 
+============================================================
+2026-04-25 21:34:36,248 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_send_challenge_with_bet
+2026-04-25 21:34:36,248 - 🕐 Время: 21:34:36.248
+2026-04-25 21:34:36,248 -    📨 callback_data: pvp_bet_5521803029_25
+2026-04-25 21:34:36,248 -    👤 user_id: 173705485
+2026-04-25 21:34:36,248 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:34:36,248 -    🏷️ conversation_state: N/A
+2026-04-25 21:34:36,248 - 🔥 pvp_handlers: pvp_send_challenge_with_bet: ВЫЗВАНА
+2026-04-25 21:34:44,973 - 📤 pvp_send_challenge_with_bet: ВОЗВРАТ
+2026-04-25 21:34:44,974 - 🔴 ВОЗВРАТ: pvp_send_challenge_with_bet -> None
+2026-04-25 21:34:44,974 - ============================================================
+
+2026-04-25 21:36:38,731 - 
+============================================================
+2026-04-25 21:36:38,731 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:36:38,731 - 🕐 Время: 21:36:38.731
+2026-04-25 21:36:38,731 -    📨 callback_data: pvp_menu
+2026-04-25 21:36:38,731 -    👤 user_id: 173705485
+2026-04-25 21:36:38,731 -    📦 user_data: {'pvp_transfer_reason': 'За красивые глаза.'}
+2026-04-25 21:36:38,731 -    🏷️ conversation_state: N/A
+2026-04-25 21:36:38,731 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:36:41,863 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:36:41,863 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:36:41,863 - ============================================================
+
+2026-04-25 21:41:13,954 - 
+============================================================
+2026-04-25 21:41:13,954 - 🔵 ВЫЗОВ ФУНКЦИИ: mountain_menu_command
+2026-04-25 21:41:13,954 - 🕐 Время: 21:41:13.954
+2026-04-25 21:41:13,954 -    📨 callback_data: mountain
+2026-04-25 21:41:13,954 -    👤 user_id: 173705485
+2026-04-25 21:41:13,954 -    📦 user_data: {}
+2026-04-25 21:41:13,954 -    🏷️ conversation_state: N/A
+2026-04-25 21:41:13,954 - 📊 [mountain_menu_command] user_data: {}
+2026-04-25 21:41:13,954 -    conversation_state: N/A
+2026-04-25 21:41:13,954 -    callback_data: mountain
+2026-04-25 21:41:13,954 - 🏔️ mountain_menu_command: ВЫЗВАНА
+2026-04-25 21:41:14,142 - 🏔️ mountain_menu_command: ВОЗВРАТ
+2026-04-25 21:41:14,143 - 🔴 ВОЗВРАТ: mountain_menu_command -> None
+2026-04-25 21:41:14,143 - ============================================================
+
+2026-04-25 21:50:35,670 - 
+============================================================
+2026-04-25 21:50:35,670 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:50:35,670 - 🕐 Время: 21:50:35.670
+2026-04-25 21:50:35,670 -    📨 callback_data: pvp
+2026-04-25 21:50:35,670 -    👤 user_id: 173705485
+2026-04-25 21:50:35,670 -    📦 user_data: {}
+2026-04-25 21:50:35,671 -    🏷️ conversation_state: N/A
+2026-04-25 21:50:35,671 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:50:38,937 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:50:38,937 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:50:38,937 - ============================================================
+
+2026-04-25 21:50:40,316 - 
+============================================================
+2026-04-25 21:50:40,317 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:50:40,317 - 🕐 Время: 21:50:40.317
+2026-04-25 21:50:40,317 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:50:40,317 -    👤 user_id: 173705485
+2026-04-25 21:50:40,317 -    📦 user_data: {}
+2026-04-25 21:50:40,317 -    🏷️ conversation_state: N/A
+2026-04-25 21:50:40,317 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:50:48,482 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:50:48,482 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:50:48,482 - ============================================================
+
+2026-04-25 21:50:55,071 - 
+============================================================
+2026-04-25 21:50:55,071 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_select_bet
+2026-04-25 21:50:55,071 - 🕐 Время: 21:50:55.071
+2026-04-25 21:50:55,071 -    📨 callback_data: pvp_challenge_user_7952340649
+2026-04-25 21:50:55,072 -    👤 user_id: 173705485
+2026-04-25 21:50:55,072 -    📦 user_data: {}
+2026-04-25 21:50:55,072 -    🏷️ conversation_state: N/A
+2026-04-25 21:50:55,072 - 🔥 pvp_handlers: pvp_select_bet: ВЫЗВАНА
+2026-04-25 21:50:58,837 - 📤 pvp_select_bet: ВОЗВРАТ
+2026-04-25 21:50:58,838 - 🔴 ВОЗВРАТ: pvp_select_bet -> None
+2026-04-25 21:50:58,838 - ============================================================
+
+2026-04-25 21:51:01,813 - 
+============================================================
+2026-04-25 21:51:01,813 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_send_challenge_with_bet
+2026-04-25 21:51:01,813 - 🕐 Время: 21:51:01.813
+2026-04-25 21:51:01,813 -    📨 callback_data: pvp_bet_7952340649_50
+2026-04-25 21:51:01,813 -    👤 user_id: 173705485
+2026-04-25 21:51:01,813 -    📦 user_data: {}
+2026-04-25 21:51:01,813 -    🏷️ conversation_state: N/A
+2026-04-25 21:51:01,813 - 🔥 pvp_handlers: pvp_send_challenge_with_bet: ВЫЗВАНА
+2026-04-25 21:51:05,512 - 📤 pvp_send_challenge_with_bet: ВОЗВРАТ (недостаточно очков)
+2026-04-25 21:51:05,512 - 🔴 ВОЗВРАТ: pvp_send_challenge_with_bet -> None
+2026-04-25 21:51:05,513 - ============================================================
+
+2026-04-25 21:51:15,277 - 
+============================================================
+2026-04-25 21:51:15,277 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:51:15,277 - 🕐 Время: 21:51:15.277
+2026-04-25 21:51:15,277 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:51:15,278 -    👤 user_id: 173705485
+2026-04-25 21:51:15,278 -    📦 user_data: {}
+2026-04-25 21:51:15,278 -    🏷️ conversation_state: N/A
+2026-04-25 21:51:15,278 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:51:26,176 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 21:51:26,176 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 21:51:26,176 - ============================================================
+
+2026-04-25 21:51:26,176 - 
+============================================================
+2026-04-25 21:51:26,176 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 21:51:26,176 - 🕐 Время: 21:51:26.176
+2026-04-25 21:51:26,177 -    📨 callback_data: pvp_new_challenge
+2026-04-25 21:51:26,177 -    👤 user_id: 173705485
+2026-04-25 21:51:26,177 -    📦 user_data: {}
+2026-04-25 21:51:26,177 -    🏷️ conversation_state: N/A
+2026-04-25 21:51:26,177 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 21:51:37,027 - 💥 ОШИБКА в pvp_show_challenge_candidates: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-04-25 21:51:37,034 - Traceback (most recent call last):
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\debug_utils.py", line 73, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\pvp_handlers.py", line 238, in pvp_show_challenge_candidates
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_callbackquery.py", line 241, in edit_message_text
+    return await self.message.edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_message.py", line 2446, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1453, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 334, in decorator
+    result = await func(*args, **kwargs)  # skipcq: PYL-E1102
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 3296, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 488, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 515, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 422, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 306, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\_bot.py", line 453, in _do_post
+    return await request.post(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 165, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LL\PycharmProjects\consilium_bot_v2\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper
+    raise BadRequest(message)
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+
+2026-04-25 21:51:37,034 - ============================================================
+
+2026-04-25 21:51:41,448 - 
+============================================================
+2026-04-25 21:51:41,448 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 21:51:41,448 - 🕐 Время: 21:51:41.448
+2026-04-25 21:51:41,448 -    📨 callback_data: pvp_menu
+2026-04-25 21:51:41,448 -    👤 user_id: 173705485
+2026-04-25 21:51:41,448 -    📦 user_data: {}
+2026-04-25 21:51:41,448 -    🏷️ conversation_state: N/A
+2026-04-25 21:51:41,448 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 21:51:44,356 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 21:51:44,357 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 21:51:44,357 - ============================================================
+
+2026-04-25 22:06:43,765 - 
+============================================================
+2026-04-25 22:06:43,765 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:06:43,765 - 🕐 Время: 22:06:43.765
+2026-04-25 22:06:43,765 -    📨 callback_data: pvp
+2026-04-25 22:06:43,765 -    👤 user_id: 7952340649
+2026-04-25 22:06:43,766 -    📦 user_data: {}
+2026-04-25 22:06:43,766 -    🏷️ conversation_state: N/A
+2026-04-25 22:06:43,766 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:06:47,312 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:06:47,313 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:06:47,313 - ============================================================
+
+2026-04-25 22:07:23,200 - 
+============================================================
+2026-04-25 22:07:23,200 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 22:07:23,201 - 🕐 Время: 22:07:23.200
+2026-04-25 22:07:23,201 -    📨 callback_data: pvp_new_challenge
+2026-04-25 22:07:23,201 -    👤 user_id: 7952340649
+2026-04-25 22:07:23,201 -    📦 user_data: {}
+2026-04-25 22:07:23,201 -    🏷️ conversation_state: N/A
+2026-04-25 22:07:23,201 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 22:07:30,498 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 22:07:30,498 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 22:07:30,498 - ============================================================
+
+2026-04-25 22:07:34,665 - 
+============================================================
+2026-04-25 22:07:34,665 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_select_bet
+2026-04-25 22:07:34,665 - 🕐 Время: 22:07:34.665
+2026-04-25 22:07:34,665 -    📨 callback_data: pvp_challenge_user_173705485
+2026-04-25 22:07:34,665 -    👤 user_id: 7952340649
+2026-04-25 22:07:34,665 -    📦 user_data: {}
+2026-04-25 22:07:34,665 -    🏷️ conversation_state: N/A
+2026-04-25 22:07:34,665 - 🔥 pvp_handlers: pvp_select_bet: ВЫЗВАНА
+2026-04-25 22:07:37,768 - 📤 pvp_select_bet: ВОЗВРАТ
+2026-04-25 22:07:37,768 - 🔴 ВОЗВРАТ: pvp_select_bet -> None
+2026-04-25 22:07:37,768 - ============================================================
+
+2026-04-25 22:07:39,998 - 
+============================================================
+2026-04-25 22:07:39,998 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_send_challenge_with_bet
+2026-04-25 22:07:39,999 - 🕐 Время: 22:07:39.999
+2026-04-25 22:07:39,999 -    📨 callback_data: pvp_bet_173705485_100
+2026-04-25 22:07:39,999 -    👤 user_id: 7952340649
+2026-04-25 22:07:39,999 -    📦 user_data: {}
+2026-04-25 22:07:39,999 -    🏷️ conversation_state: N/A
+2026-04-25 22:07:39,999 - 🔥 pvp_handlers: pvp_send_challenge_with_bet: ВЫЗВАНА
+2026-04-25 22:07:44,557 - 📤 pvp_send_challenge_with_bet: ВОЗВРАТ
+2026-04-25 22:07:44,557 - 🔴 ВОЗВРАТ: pvp_send_challenge_with_bet -> None
+2026-04-25 22:07:44,557 - ============================================================
+
+2026-04-25 22:07:52,645 - 
+============================================================
+2026-04-25 22:07:52,645 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_accept_challenge
+2026-04-25 22:07:52,645 - 🕐 Время: 22:07:52.645
+2026-04-25 22:07:52,645 -    📨 callback_data: pvp_accept_2
+2026-04-25 22:07:52,646 -    👤 user_id: 173705485
+2026-04-25 22:07:52,646 -    📦 user_data: {'pvp_transfer_reason': None}
+2026-04-25 22:07:52,646 -    🏷️ conversation_state: N/A
+2026-04-25 22:07:52,646 - 🔥 pvp_handlers: pvp_accept_challenge: ВЫЗВАНА
+2026-04-25 22:08:03,263 - 📤 pvp_accept_challenge: ВОЗВРАТ
+2026-04-25 22:08:03,264 - 🔴 ВОЗВРАТ: pvp_accept_challenge -> None
+2026-04-25 22:08:03,264 - ============================================================
+
+2026-04-25 22:17:25,796 - 
+============================================================
+2026-04-25 22:17:25,797 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_accept_challenge
+2026-04-25 22:17:25,797 - 🕐 Время: 22:17:25.797
+2026-04-25 22:17:25,798 -    📨 callback_data: pvp_accept_1
+2026-04-25 22:17:25,798 -    👤 user_id: 5521803029
+2026-04-25 22:17:25,798 -    📦 user_data: {}
+2026-04-25 22:17:25,798 -    🏷️ conversation_state: N/A
+2026-04-25 22:17:25,798 - 🔥 pvp_handlers: pvp_accept_challenge: ВЫЗВАНА
+2026-04-25 22:17:31,428 - 📤 pvp_accept_challenge: ВОЗВРАТ
+2026-04-25 22:17:31,428 - 🔴 ВОЗВРАТ: pvp_accept_challenge -> None
+2026-04-25 22:17:31,429 - ============================================================
+
+2026-04-25 22:20:45,227 - 
+============================================================
+2026-04-25 22:20:45,228 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:20:45,228 - 🕐 Время: 22:20:45.228
+2026-04-25 22:20:45,228 -    📨 callback_data: pvp
+2026-04-25 22:20:45,228 -    👤 user_id: 173705485
+2026-04-25 22:20:45,228 -    📦 user_data: {}
+2026-04-25 22:20:45,228 -    🏷️ conversation_state: N/A
+2026-04-25 22:20:45,228 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:20:48,234 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:20:48,235 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:20:48,235 - ============================================================
+
+2026-04-25 22:20:51,083 - 
+============================================================
+2026-04-25 22:20:51,083 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_challenge_candidates
+2026-04-25 22:20:51,083 - 🕐 Время: 22:20:51.083
+2026-04-25 22:20:51,084 -    📨 callback_data: pvp_new_challenge
+2026-04-25 22:20:51,084 -    👤 user_id: 173705485
+2026-04-25 22:20:51,084 -    📦 user_data: {}
+2026-04-25 22:20:51,084 -    🏷️ conversation_state: N/A
+2026-04-25 22:20:51,084 - 🔥 pvp_handlers: pvp_show_challenge_candidates: ВЫЗВАНА
+2026-04-25 22:20:59,518 - 📤 pvp_show_challenge_candidates: ВОЗВРАТ
+2026-04-25 22:20:59,518 - 🔴 ВОЗВРАТ: pvp_show_challenge_candidates -> None
+2026-04-25 22:20:59,518 - ============================================================
+
+2026-04-25 22:21:07,164 - 
+============================================================
+2026-04-25 22:21:07,164 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:21:07,164 - 🕐 Время: 22:21:07.164
+2026-04-25 22:21:07,164 -    📨 callback_data: pvp_menu
+2026-04-25 22:21:07,165 -    👤 user_id: 173705485
+2026-04-25 22:21:07,165 -    📦 user_data: {}
+2026-04-25 22:21:07,165 -    🏷️ conversation_state: N/A
+2026-04-25 22:21:07,165 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:21:11,417 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:21:11,418 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:21:11,418 - ============================================================
+
+2026-04-25 22:22:02,836 - 
+============================================================
+2026-04-25 22:22:02,837 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:22:02,837 - 🕐 Время: 22:22:02.837
+2026-04-25 22:22:02,837 -    📨 callback_data: pvp
+2026-04-25 22:22:02,837 -    👤 user_id: 173705485
+2026-04-25 22:22:02,837 -    📦 user_data: {}
+2026-04-25 22:22:02,837 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:02,837 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:22:05,711 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:22:05,711 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:22:05,711 - ============================================================
+
+2026-04-25 22:22:07,986 - 
+============================================================
+2026-04-25 22:22:07,986 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_my_challenges
+2026-04-25 22:22:07,986 - 🕐 Время: 22:22:07.986
+2026-04-25 22:22:07,986 -    📨 callback_data: pvp_my_challenges
+2026-04-25 22:22:07,986 -    👤 user_id: 173705485
+2026-04-25 22:22:07,986 -    📦 user_data: {}
+2026-04-25 22:22:07,986 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:07,986 - 🔥 pvp_handlers: pvp_my_challenges: ВЫЗВАНА
+2026-04-25 22:22:11,864 - 📤 pvp_my_challenges: ВОЗВРАТ
+2026-04-25 22:22:11,864 - 🔴 ВОЗВРАТ: pvp_my_challenges -> None
+2026-04-25 22:22:11,865 - ============================================================
+
+2026-04-25 22:22:24,309 - 
+============================================================
+2026-04-25 22:22:24,309 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_cancel_challenge
+2026-04-25 22:22:24,309 - 🕐 Время: 22:22:24.309
+2026-04-25 22:22:24,310 -    📨 callback_data: pvp_cancel_2
+2026-04-25 22:22:24,310 -    👤 user_id: 173705485
+2026-04-25 22:22:24,310 -    📦 user_data: {}
+2026-04-25 22:22:24,310 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:24,310 - 🔥 pvp_handlers: pvp_cancel_challenge: ВЫЗВАНА
+2026-04-25 22:22:26,053 - 📤 pvp_cancel_challenge: ВОЗВРАТ
+2026-04-25 22:22:26,054 - 🔴 ВОЗВРАТ: pvp_cancel_challenge -> None
+2026-04-25 22:22:26,054 - ============================================================
+
+2026-04-25 22:22:30,071 - 
+============================================================
+2026-04-25 22:22:30,071 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:22:30,072 - 🕐 Время: 22:22:30.072
+2026-04-25 22:22:30,072 -    📨 callback_data: pvp_menu
+2026-04-25 22:22:30,072 -    👤 user_id: 173705485
+2026-04-25 22:22:30,072 -    📦 user_data: {}
+2026-04-25 22:22:30,072 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:30,072 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:22:34,321 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:22:34,321 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:22:34,322 - ============================================================
+
+2026-04-25 22:22:37,669 - 
+============================================================
+2026-04-25 22:22:37,669 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_my_challenges
+2026-04-25 22:22:37,670 - 🕐 Время: 22:22:37.670
+2026-04-25 22:22:37,670 -    📨 callback_data: pvp_my_challenges
+2026-04-25 22:22:37,670 -    👤 user_id: 173705485
+2026-04-25 22:22:37,670 -    📦 user_data: {}
+2026-04-25 22:22:37,670 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:37,670 - 🔥 pvp_handlers: pvp_my_challenges: ВЫЗВАНА
+2026-04-25 22:22:41,713 - 📤 pvp_my_challenges: ВОЗВРАТ
+2026-04-25 22:22:41,713 - 🔴 ВОЗВРАТ: pvp_my_challenges -> None
+2026-04-25 22:22:41,713 - ============================================================
+
+2026-04-25 22:22:44,852 - 
+============================================================
+2026-04-25 22:22:44,852 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_cancel_challenge
+2026-04-25 22:22:44,852 - 🕐 Время: 22:22:44.852
+2026-04-25 22:22:44,852 -    📨 callback_data: pvp_cancel_1
+2026-04-25 22:22:44,852 -    👤 user_id: 173705485
+2026-04-25 22:22:44,852 -    📦 user_data: {}
+2026-04-25 22:22:44,853 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:44,853 - 🔥 pvp_handlers: pvp_cancel_challenge: ВЫЗВАНА
+2026-04-25 22:22:48,341 - 📤 pvp_cancel_challenge: ВОЗВРАТ
+2026-04-25 22:22:48,341 - 🔴 ВОЗВРАТ: pvp_cancel_challenge -> None
+2026-04-25 22:22:48,341 - ============================================================
+
+2026-04-25 22:22:50,193 - 
+============================================================
+2026-04-25 22:22:50,193 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:22:50,193 - 🕐 Время: 22:22:50.193
+2026-04-25 22:22:50,193 -    📨 callback_data: pvp_menu
+2026-04-25 22:22:50,193 -    👤 user_id: 173705485
+2026-04-25 22:22:50,194 -    📦 user_data: {}
+2026-04-25 22:22:50,194 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:50,194 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:22:53,095 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:22:53,096 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:22:53,096 - ============================================================
+
+2026-04-25 22:22:55,466 - 
+============================================================
+2026-04-25 22:22:55,466 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_show_stats
+2026-04-25 22:22:55,466 - 🕐 Время: 22:22:55.466
+2026-04-25 22:22:55,467 -    📨 callback_data: pvp_stats
+2026-04-25 22:22:55,467 -    👤 user_id: 173705485
+2026-04-25 22:22:55,467 -    📦 user_data: {}
+2026-04-25 22:22:55,467 -    🏷️ conversation_state: N/A
+2026-04-25 22:22:55,467 - 🔥 pvp_handlers: pvp_show_stats: ВЫЗВАНА
+2026-04-25 22:22:57,951 - 📤 pvp_show_stats: ВОЗВРАТ
+2026-04-25 22:22:57,952 - 🔴 ВОЗВРАТ: pvp_show_stats -> None
+2026-04-25 22:22:57,952 - ============================================================
+
+2026-04-25 22:23:09,892 - 
+============================================================
+2026-04-25 22:23:09,892 - 🔵 ВЫЗОВ ФУНКЦИИ: pvp_main_menu
+2026-04-25 22:23:09,892 - 🕐 Время: 22:23:09.892
+2026-04-25 22:23:09,892 -    📨 callback_data: pvp_menu
+2026-04-25 22:23:09,892 -    👤 user_id: 173705485
+2026-04-25 22:23:09,892 -    📦 user_data: {}
+2026-04-25 22:23:09,892 -    🏷️ conversation_state: N/A
+2026-04-25 22:23:09,892 - 🔥 pvp_handlers: pvp_main_menu: ВЫЗВАНА
+2026-04-25 22:23:16,009 - 📤 pvp_main_menu: ВОЗВРАТ
+2026-04-25 22:23:16,009 - 🔴 ВОЗВРАТ: pvp_main_menu -> None
+2026-04-25 22:23:16,009 - ============================================================
+
