@@ -910,9 +910,9 @@ def get_user_info(user_id):
     row = cur.fetchone()
     release_db_connection(conn)  # ИСПРАВЛЕНО: возвращаем в пул!
 
-    # Сохраняем в кэш
+    # Сохраняем в кэш на 5 минут (увеличено с 60 секунд)
     if row:
-        DataCache.set_user_info(user_id, row, ttl=60)  # Кэшируем на 1 минуту
+        DataCache.set_user_info(user_id, row, ttl=300)  # Кэшируем на 5 минут
 
     return row
 
@@ -958,8 +958,16 @@ def get_all_users(limit=100):
 
 
 def get_user_group(user_id):
-    """Возвращает группу пользователя."""
+    """Возвращает группу пользователя с кэшированием."""
     try:
+        # Проверяем кэш сначала
+        from cache_manager import DataCache
+        cache_key = f"user_group_{user_id}"
+        cached = DataCache._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Если нет в кэше, запрашиваем из БД
         conn = get_db_connection()
         cur = conn.cursor()
 
@@ -972,9 +980,13 @@ def get_user_group(user_id):
         row = cur.fetchone()
         release_db_connection(conn)
 
-        if row:
-            return row[0]
-        return None
+        result = row[0] if row else None
+
+        # Кэшируем на 5 минут (300 секунд)
+        if result is not None:
+            DataCache._cache_set(cache_key, result, ttl=300)
+
+        return result
     except Exception as e:
         logger.error(f"Ошибка получения группы: {e}")
         return None
@@ -5313,7 +5325,15 @@ def is_owner(user_id):
 # ==================== FRUN FUEL SYSTEM ====================
 
 def get_fun_fuel_balance(user_id):
-    """Получает баланс FruN Fuel пользователя."""
+    """Получает баланс FruN Fuel пользователя с кэшированием."""
+    # Проверяем кэш сначала
+    from cache_manager import DataCache
+    cache_key = f"fun_fuel_{user_id}"
+    cached = DataCache._cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    # Если нет в кэше, запрашиваем из БД
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -5321,10 +5341,12 @@ def get_fun_fuel_balance(user_id):
         cur.execute("SELECT fun_fuel_balance FROM users WHERE telegram_id = %s", (user_id,))
         result = cur.fetchone()
 
-        if result:
-            return result[0]
-        else:
-            return 0
+        balance = result[0] if result else 0
+
+        # Кэшируем на 60 секунд
+        DataCache._cache_set(cache_key, balance, ttl=60)
+
+        return balance
     except Exception as e:
         logger.error(f"Ошибка получения баланса FF: {e}")
         return 0
