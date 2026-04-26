@@ -382,7 +382,8 @@ async def handle_main_menu(update: Update, context) -> None:
                 gap_text = f"📈 До вершины: {score_gap:,} очков".replace(',', ' ')
             else:
                 gap_text = "👑 Ты на вершине!"
-        except:
+        except Exception as e:
+            logger.error(f"Ошибка расчета позиции до вершины: {e}")
             gap_text = "📈 До вершины: рассчитываем..."
 
         percent_text = f"{stats['percent_from_top']:.1f}%" if stats['percent_from_top'] is not None else "N/A"
@@ -393,14 +394,16 @@ async def handle_main_menu(update: Update, context) -> None:
         # Получаем FRuN монеты
         try:
             frun_balance = get_user_coin_balance(user_id)
-        except:
+        except Exception as e:
+            logger.error(f"Ошибка получения баланса FF: {e}")
             frun_balance = 0
 
         # Получаем FruNFuel (очки на Горе Успеха)
         try:
             from database_postgres import get_fun_fuel_balance
             fun_fuel = get_fun_fuel_balance(user_id)
-        except:
+        except Exception as e:
+            logger.error(f"Ошибка получения FruNFuel: {e}")
             fun_fuel = 0
 
         # Получаем тренировочные очки
