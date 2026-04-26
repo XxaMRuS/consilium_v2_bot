@@ -399,6 +399,7 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
 
         # Отправляем уведомление в канал о выполнении тренировки
         try:
+            logger.info(f"🔔 Попытка отправить уведомление о тренировке для user_id={user_id}, exercise_id={exercise_id}")
             exercise = get_exercise_by_id(exercise_id)
             if exercise:
                 exercise_name = exercise[1]  # name
@@ -411,9 +412,14 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
                     'result_value': format_workout_result(formatted_result, metric),
                     'video_link': proof_link if proof_link and not proof_link.startswith(('photo_', 'video_', 'document_')) else ''
                 }
+                logger.info(f"📤 Вызов notify_workout_completion с данными: {workout_data}")
                 await channel_notifications.notify_workout_completion(context.bot, workout_data)
+            else:
+                logger.warning(f"⚠️ Упражнение не найдено для exercise_id={exercise_id}")
         except Exception as e:
-            logger.error(f"Ошибка отправки уведомления о тренировке: {e}")
+            logger.error(f"❌ Ошибка отправки уведомления о тренировке: {e}")
+            import traceback
+            traceback.print_exc()
         print(f"DEBUG workout save: success=True, workout_id={workout_id}, achievements={achievements}")
     except Exception as e:
         logger.error(f"Error saving workout: {e}")
@@ -431,7 +437,12 @@ async def upload_workout_proof(update: Update, context: ContextTypes.DEFAULT_TYP
             f"📊 Результат: {format_number(formatted_result)}\n\n"
             f"Отличная работа! Продолжайте в том же духе! 💪"
         )
-        keyboard = [[InlineKeyboardButton("💪 К упражнениям", callback_data=SPORT_EXERCISES)]]
+        keyboard = [
+            [
+                InlineKeyboardButton("📢 Посмотреть в канале", url="https://t.me/MDFruN_Sports_Channel"),
+                InlineKeyboardButton("💪 К упражнениям", callback_data=SPORT_EXERCISES)
+            ]
+        ]
     else:
         text = "❌ Ошибка при сохранении результата"
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data=SPORT_EXERCISES)]]
@@ -879,6 +890,7 @@ async def complete_complex(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Отправляем уведомление в канал
         try:
+            logger.info(f"🔔 Попытка отправить уведомление о выполнении комплекса для user_id={user_id}")
             user = update.effective_user
             completion_data = {
                 'user_id': user_id,
@@ -887,10 +899,13 @@ async def complete_complex(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'complex_name': complex_data['name'],
                 'video_link': ''
             }
+            logger.info(f"📤 Вызов notify_complex_completion с данными: {completion_data}")
             import channel_notifications
             await channel_notifications.notify_complex_completion(context.bot, completion_data)
         except Exception as e:
-            logger.error(f"Ошибка отправки уведомления о комплексе: {e}")
+            logger.error(f"❌ Ошибка отправки уведомления о комплексе: {e}")
+            import traceback
+            traceback.print_exc()
 
         # Получаем рекорды комплекса для статистики
         user_info = get_user_info(user_id)
@@ -931,7 +946,12 @@ async def complete_complex(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"📈 Продолжай улучшать свои результаты!\n"
         text += f"🎯 Следующий комплекс уже ждёт тебя."
 
-        keyboard = [[InlineKeyboardButton("🏠 В меню спорта", callback_data=SPORT_MENU)]]
+        keyboard = [
+            [
+                InlineKeyboardButton("📢 Посмотреть в канале", url="https://t.me/MDFruN_Sports_Channel"),
+                InlineKeyboardButton("🏠 В меню спорта", callback_data=SPORT_MENU)
+            ]
+        ]
 
         if hasattr(query, 'edit_message_text'):
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -1013,6 +1033,29 @@ async def handle_complex_exercise_result(update: Update, context: ContextTypes.D
             video_link=video_link,
             user_level="beginner"
         )
+
+        # Отправляем уведомление о выполнении упражнения в канал
+        try:
+            from database_postgres import get_exercise_by_id
+            exercise_info = get_exercise_by_id(ex_id)
+            if exercise_info:
+                exercise_name = exercise_info[1]  # name
+                user = update.effective_user
+                workout_data = {
+                    'user_id': user_id,
+                    'user_name': user.first_name or "Пользователь",
+                    'username': user.username,
+                    'exercise_name': exercise_name,
+                    'result_value': str(result_value),
+                    'video_link': video_link if video_link and not video_link.startswith(('photo_', 'video_', 'document_')) else ''
+                }
+                logger.info(f"📤 Вызов notify_workout_completion для упражнения комплекса: {workout_data}")
+                import channel_notifications
+                await channel_notifications.notify_workout_completion(context.bot, workout_data)
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки уведомления об упражнении комплекса: {e}")
+            import traceback
+            traceback.print_exc()
 
         # Очищаем временное хранение видео для этого упражнения
         context.user_data.pop(f'video_exercise_{current_index}', None)

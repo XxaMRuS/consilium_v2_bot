@@ -868,6 +868,11 @@ async def pvp_my_challenges(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Получаем ставку, если есть
         bet = challenge[12] if len(challenge) > 12 else 0
+        # Преобразуем ставку в число
+        try:
+            bet = int(bet) if bet else 0
+        except (ValueError, TypeError):
+            bet = 0
 
         # Получаем информацию о вызове с упражнением
         challenge_type = challenge[13] if len(challenge) > 13 else 'default'
@@ -1517,6 +1522,7 @@ async def pvp_handle_exercise_result_input(update: Update, context: ContextTypes
             f"💡 Вы можете изменить его в любое время до завершения дуэли.\n"
             f"✅ Не забудьте подтвердить результат после завершения упражнения!",
             reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("📢 Посмотреть в канале", url="https://t.me/MDFruN_Sports_Channel"),
                 InlineKeyboardButton("🔄 Обновить", callback_data="pvp_refresh_results")
             ]])
         )
@@ -1551,6 +1557,7 @@ async def pvp_confirm_exercise_result(update: Update, context: ContextTypes.DEFA
                 f"🎉 Оба участника подтвердили результаты!\n\n"
                 f"{complete_message}",
                 reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("📢 Посмотреть в канале", url="https://t.me/MDFruN_Sports_Channel"),
                     InlineKeyboardButton("🎮 В меню", callback_data=PVP_MENU_CALLBACK)
                 ]])
             )
@@ -1560,6 +1567,7 @@ async def pvp_confirm_exercise_result(update: Update, context: ContextTypes.DEFA
                 f"💡 Ожидайте подтверждения от соперника.\n"
                 f"🔄 Дуэль завершится автоматически после обоих подтверждений.",
                 reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("📢 Посмотреть в канале", url="https://t.me/MDFruN_Sports_Channel"),
                     InlineKeyboardButton("🔄 Обновить", callback_data="pvp_refresh_results")
                 ]])
             )

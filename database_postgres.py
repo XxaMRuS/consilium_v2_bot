@@ -2977,6 +2977,12 @@ def accept_pvp_challenge(challenge_id, opponent_id):
 
         challenger_id, opponent_id_db, bet = row
 
+        # Преобразуем ставку в число
+        try:
+            bet = int(bet) if bet is not None else 0
+        except (ValueError, TypeError):
+            bet = 0
+
         # Проверяем, что у принимающего достаточно FF
         op_balance = get_fun_fuel_balance(opponent_id_db)
         if op_balance < bet:
@@ -3028,6 +3034,12 @@ def reject_pvp_challenge(challenge_id, opponent_id):
             return False
 
         challenger_id, _, bet = challenge
+
+        # Преобразуем ставку в число
+        try:
+            bet = int(bet) if bet is not None else 0
+        except (ValueError, TypeError):
+            bet = 0
 
         # Тот, кто отменил (opponent) - проигрывает
         # Списываем ставку у opponent_id и начисляем challenger_id
@@ -3097,6 +3109,12 @@ def cancel_pvp_challenge_and_refund(challenge_id, user_id):
             return False, "Вызов не найден", None, None, 0
 
         db_challenge_id, challenger_id, opponent_id, status, bet = challenge
+
+        # Преобразуем ставку в число
+        try:
+            bet = int(bet) if bet is not None else 0
+        except (ValueError, TypeError):
+            bet = 0
 
         # Проверяем, что пользователь является участником
         if user_id != challenger_id and user_id != opponent_id:
@@ -3226,6 +3244,12 @@ def complete_pvp_challenge(challenge_id):
         _, challenger_id, opponent_id, start_time, end_time, bet, \
             ch_start, op_start, exercise_id, challenge_type, \
             ch_confirmed, op_confirmed, ch_result, op_result = row
+
+        # Преобразуем ставку в число
+        try:
+            bet = int(bet) if bet is not None else 0
+        except (ValueError, TypeError):
+            bet = 0
 
         # Если это вызов на упражнение
         if challenge_type == 'exercise':
