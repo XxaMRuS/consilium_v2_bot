@@ -7,9 +7,11 @@ Uses existing database functions without modifying current code
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from typing import Optional
 from pydantic import BaseModel
 import logging
+import os
 
 # Импортируем СУЩЕСТВУЮЩИЕ функции из database_postgres
 from database_postgres import (
@@ -88,6 +90,15 @@ async def health():
         "service": "fitness-bot-api",
         "version": "0.1.0"
     }
+
+@app.get("/xd_receiver.html")
+async def get_xd_receiver():
+    """VK XD Receiver для кросс-доменной коммуникации"""
+    file_path = os.path.join(os.path.dirname(__file__), "xd_receiver.html")
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    else:
+        raise HTTPException(status_code=404, detail="xd_receiver.html not found")
 
 # ==================== USERS ====================
 
