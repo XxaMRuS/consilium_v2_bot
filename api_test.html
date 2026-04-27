@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Bot API Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .endpoint {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .endpoint h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 0.9em;
+        }
+
+        .url {
+            color: #666;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .response {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .response.show {
+            display: block;
+        }
+
+        .response.error {
+            color: #ff6b6b;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status {
+            padding: 8px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 0.9em;
+        }
+
+        .status.online {
+            background: #00ff88;
+            color: #006633;
+        }
+
+        .status.offline {
+            background: #ff6b6b;
+            color: #cc0000;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏋️ Fitness Bot API Test</h1>
+
+        <!-- Status Card -->
+        <div class="card">
+            <h2>📡 Server Status</h2>
+            <div id="status">
+                <button onclick="checkStatus()">Check Status</button>
+                <span id="statusIndicator"></span>
+            </div>
+            <div id="statusResponse" class="response"></div>
+        </div>
+
+        <!-- Users Card -->
+        <div class="card">
+            <h2>👤 Users</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/users/{user_id}</span></h3>
+                <div class="input-group">
+                    <label>User ID:</label>
+                    <input type="number" id="userId" value="123456789" placeholder="Enter user ID">
+                </div>
+                <button onclick="getUser()">Get User Profile</button>
+                <div id="userResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- Exercises Card -->
+        <div class="card">
+            <h2>💪 Exercises</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/exercises</span></h3>
+                <button onclick="getExercises()">Get All Exercises</button>
+                <div id="exercisesResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- Complexes Card -->
+        <div class="card">
+            <h2>📦 Complexes</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/complexes</span></h3>
+                <button onclick="getComplexes()">Get Complexes</button>
+                <div id="complexesResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- Challenges Card -->
+        <div class="card">
+            <h2>🏆 Challenges</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/challenges</span></h3>
+                <button onclick="getChallenges()">Get Challenges</button>
+                <div id="challengesResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Card -->
+        <div class="card">
+            <h2>🏅 Leaderboard</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/leaderboard</span></h3>
+                <div class="input-group">
+                    <label>Limit:</label>
+                    <input type="number" id="leaderboardLimit" value="10" min="1" max="100">
+                </div>
+                <button onclick="getLeaderboard()">Get Leaderboard</button>
+                <div id="leaderboardResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- PvP Card -->
+        <div class="card">
+            <h2>⚔️ PvP Stats</h2>
+            <div class="endpoint">
+                <h3><span class="method">GET</span><span class="url">/api/pvp/stats/{user_id}</span></h3>
+                <div class="input-group">
+                    <label>User ID:</label>
+                    <input type="number" id="pvpUserId" value="123456789" placeholder="Enter user ID">
+                </div>
+                <button onclick="getPvpStats()">Get PvP Stats</button>
+                <div id="pvpResponse" class="response"></div>
+            </div>
+        </div>
+
+        <!-- Create Workout Card -->
+        <div class="card">
+            <h2>🏋️ Create Workout</h2>
+            <div class="endpoint">
+                <h3><span class="method">POST</span><span class="url">/api/workouts</span></h3>
+                <div class="input-group">
+                    <label>User ID:</label>
+                    <input type="number" id="workoutUserId" value="123456789">
+                </div>
+                <div class="input-group">
+                    <label>Exercise ID:</label>
+                    <input type="number" id="exerciseId" value="11">
+                </div>
+                <div class="input-group">
+                    <label>Result Value:</label>
+                    <input type="text" id="resultValue" value="100">
+                </div>
+                <button onclick="createWorkout()">Create Workout</button>
+                <div id="workoutResponse" class="response"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+
+        async function makeRequest(method, url, body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, options);
+                const data = await response.json();
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        function showResponse(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.classList.add('show');
+
+            if (result.success) {
+                element.classList.remove('error');
+                element.textContent = JSON.stringify(result.data, null, 2);
+            } else {
+                element.classList.add('error');
+                element.textContent = 'Error: ' + (result.error || JSON.stringify(result.data, null, 2));
+            }
+        }
+
+        async function checkStatus() {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.innerHTML = '<span class="loading"></span>';
+
+            const result = await makeRequest('GET', `${API_BASE}/`);
+            showResponse('statusResponse', result);
+
+            if (result.success) {
+                indicator.innerHTML = '<span class="status online">● ONLINE</span>';
+            } else {
+                indicator.innerHTML = '<span class="status offline">● OFFLINE</span>';
+            }
+        }
+
+        async function getUser() {
+            const userId = document.getElementById('userId').value;
+            const result = await makeRequest('GET', `${API_BASE}/api/users/${userId}`);
+            showResponse('userResponse', result);
+        }
+
+        async function getExercises() {
+            const result = await makeRequest('GET', `${API_BASE}/api/exercises`);
+            showResponse('exercisesResponse', result);
+        }
+
+        async function getComplexes() {
+            const result = await makeRequest('GET', `${API_BASE}/api/complexes`);
+            showResponse('complexesResponse', result);
+        }
+
+        async function getChallenges() {
+            const result = await makeRequest('GET', `${API_BASE}/api/challenges`);
+            showResponse('challengesResponse', result);
+        }
+
+        async function getLeaderboard() {
+            const limit = document.getElementById('leaderboardLimit').value;
+            const result = await makeRequest('GET', `${API_BASE}/api/leaderboard?limit=${limit}`);
+            showResponse('leaderboardResponse', result);
+        }
+
+        async function getPvpStats() {
+            const userId = document.getElementById('pvpUserId').value;
+            const result = await makeRequest('GET', `${API_BASE}/api/pvp/stats/${userId}`);
+            showResponse('pvpResponse', result);
+        }
+
+        async function createWorkout() {
+            const workout = {
+                user_id: parseInt(document.getElementById('workoutUserId').value),
+                exercise_id: parseInt(document.getElementById('exerciseId').value),
+                result_value: document.getElementById('resultValue').value,
+                user_level: "beginner"
+            };
+
+            const result = await makeRequest('POST', `${API_BASE}/api/workouts`, workout);
+            showResponse('workoutResponse', result);
+        }
+
+        // Auto-check status on page load
+        window.onload = function() {
+            checkStatus();
+        };
+    </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ Uses existing database functions without modifying current code
 
 from fastapi import FastAPI, HTTPException
 from typing import Optional
+from pydantic import BaseModel
 import logging
 
 # Импортируем СУЩЕСТВУЮЩИЕ функции из database_postgres
@@ -18,7 +19,12 @@ from database_postgres import (
     get_exercises,
     get_exercise_by_id,
     get_all_complexes,
-    get_challenges_by_status
+    get_challenges_by_status,
+    add_workout,
+    get_user_workouts,
+    get_top_workouts,
+    get_user_pvp_stats,
+    get_pvp_challenge
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +35,19 @@ app = FastAPI(
     description="REST API for Fitness Bot VK Mini App",
     version="0.1.0"
 )
+
+# ==================== PYDANTIC MODELS ====================
+
+class WorkoutRequest(BaseModel):
+    """Модель для создания тренировки"""
+    user_id: int
+    exercise_id: Optional[int] = None
+    complex_id: Optional[int] = None
+    result_value: str
+    video_link: Optional[str] = ""
+    user_level: Optional[str] = "beginner"
+    comment: Optional[str] = None
+    metric: Optional[str] = None
 
 # ==================== HEALTH CHECK ====================
 
@@ -42,7 +61,11 @@ async def root():
         "endpoints": {
             "users": "/api/users/{user_id}",
             "exercises": "/api/exercises",
-            "health": "/health"
+            "workouts": "/api/workouts",
+            "leaderboard": "/api/leaderboard",
+            "pvp": "/api/pvp/stats/{user_id}",
+            "health": "/health",
+            "docs": "/docs (Swagger UI)"
         }
     }
 
@@ -166,14 +189,14 @@ async def list_complexes():
 
         result = []
         for comp in complexes:
+            # Безопасно извлекаем данные с проверкой длины (всего 6 элементов)
             result.append({
-                "id": comp[0],
-                "name": comp[1],
-                "description": comp[2],
-                "metric_type": comp[3],    # time, count
-                "points": comp[4],
-                "difficulty": comp[5],
-                "active": comp[6]
+                "id": comp[0] if len(comp) > 0 else None,
+                "name": comp[1] if len(comp) > 1 else "",
+                "description": comp[2] if len(comp) > 2 else "",
+                "metric_type": comp[3] if len(comp) > 3 else "count",    # time, count
+                "points": comp[4] if len(comp) > 4 else 0,
+                "difficulty": comp[5] if len(comp) > 5 else "beginner"
             })
 
         return {
@@ -203,16 +226,17 @@ async def list_challenges(status: str = "active"):
 
         result = []
         for ch in challenges:
+            # Безопасно извлекаем данные с проверкой длины
             result.append({
-                "id": ch[0],
-                "name": ch[1],
-                "description": ch[2],
-                "metric": ch[3],
-                "target_value": ch[4],
-                "start_date": str(ch[5]),
-                "end_date": str(ch[6]),
-                "bonus_points": ch[7],
-                "status": ch[8]
+                "id": ch[0] if len(ch) > 0 else None,
+                "name": ch[1] if len(ch) > 1 else "",
+                "description": ch[2] if len(ch) > 2 else "",
+                "metric": ch[3] if len(ch) > 3 else "reps",
+                "target_value": ch[4] if len(ch) > 4 else 0,
+                "start_date": str(ch[5]) if len(ch) > 5 else None,
+                "end_date": str(ch[6]) if len(ch) > 6 else None,
+                "bonus_points": ch[7] if len(ch) > 7 else 0,
+                "status": ch[8] if len(ch) > 8 else "active"
             })
 
         return {
@@ -222,6 +246,164 @@ async def list_challenges(status: str = "active"):
 
     except Exception as e:
         logger.error(f"Error getting challenges: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== WORKOUTS ====================
+
+@app.post("/api/workouts")
+async def create_workout(workout: WorkoutRequest):
+    """
+    Записать тренировку
+
+    Требует:
+    - user_id: ID пользователя
+    - exercise_id или complex_id: ID упражнения или комплекса
+    - result_value: результат тренировки
+    - video_link: опционально, ссылка на видео
+    """
+    try:
+        # Проверяем что указано либо упражнение либо комплекс
+        if not workout.exercise_id and not workout.complex_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Either exercise_id or complex_id must be provided"
+            )
+
+        # Добавляем тренировку
+        workout_id = add_workout(
+            user_id=workout.user_id,
+            exercise_id=workout.exercise_id,
+            complex_id=workout.complex_id,
+            result_value=workout.result_value,
+            video_link=workout.video_link,
+            user_level=workout.user_level,
+            comment=workout.comment,
+            metric=workout.metric
+        )
+
+        return {
+            "success": True,
+            "workout_id": workout_id,
+            "message": "Тренировка успешно записана"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating workout: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/workouts/{user_id}")
+async def get_user_workouts_list(user_id: int, limit: int = 20):
+    """
+    Получить тренировки пользователя
+
+    Query parameters:
+    - limit: количество тренировок (default: 20)
+    """
+    try:
+        workouts = get_user_workouts(user_id, limit=limit)
+
+        result = []
+        for wo in workouts:
+            result.append({
+                "id": wo[0] if len(wo) > 0 else None,
+                "user_id": wo[1] if len(wo) > 1 else user_id,
+                "exercise_id": wo[2] if len(wo) > 2 else None,
+                "complex_id": wo[3] if len(wo) > 3 else None,
+                "result_value": wo[4] if len(wo) > 4 else "",
+                "video_link": wo[5] if len(wo) > 5 else "",
+                "created_at": str(wo[6]) if len(wo) > 6 else None
+            })
+
+        return {
+            "user_id": user_id,
+            "count": len(result),
+            "workouts": result
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting workouts for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(limit: int = 10):
+    """
+    Получить топ пользователей по тренировкам
+
+    Query parameters:
+    - limit: количество пользователей (default: 10)
+    """
+    try:
+        top_workouts = get_top_workouts(limit=limit)
+
+        result = []
+        for entry in top_workouts:
+            result.append({
+                "user_id": entry[0] if len(entry) > 0 else None,
+                "first_name": entry[1] if len(entry) > 1 else "",
+                "username": entry[2] if len(entry) > 2 else "",
+                "total_workouts": entry[3] if len(entry) > 3 else 0,
+                "total_score": entry[4] if len(entry) > 4 else 0
+            })
+
+        return {
+            "limit": limit,
+            "count": len(result),
+            "leaderboard": result
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting leaderboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== PVP ====================
+
+@app.get("/api/pvp/stats/{user_id}")
+async def get_pvp_stats(user_id: int):
+    """Получить PvP статистику пользователя"""
+    try:
+        stats = get_user_pvp_stats(user_id)
+
+        return {
+            "user_id": user_id,
+            "stats": {
+                "total": stats.get('total', 0),
+                "wins": stats.get('wins', 0),
+                "losses": stats.get('losses', 0),
+                "draws": stats.get('draws', 0),
+                "coins_won": stats.get('coins_won', 0),
+                "coins_lost": stats.get('coins_lost', 0)
+            },
+            "win_rate": round(stats.get('wins', 0) / max(stats.get('total', 1), 1) * 100, 2)
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting PvP stats for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/pvp/challenge/{challenge_id}")
+async def get_pvp_challenge_detail(challenge_id: int):
+    """Получить детальную информацию о PvP баттле"""
+    try:
+        challenge = get_pvp_challenge(challenge_id)
+        if not challenge:
+            raise HTTPException(status_code=404, detail="PvP challenge not found")
+
+        return {
+            "id": challenge[0] if len(challenge) > 0 else None,
+            "challenger_id": challenge[1] if len(challenge) > 1 else None,
+            "opponent_id": challenge[2] if len(challenge) > 2 else None,
+            "status": challenge[3] if len(challenge) > 3 else "unknown",
+            "bet": challenge[4] if len(challenge) > 4 else 0,
+            "exercise_id": challenge[5] if len(challenge) > 5 else None,
+            "created_at": str(challenge[6]) if len(challenge) > 6 else None
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting PvP challenge {challenge_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== MAIN ====================
