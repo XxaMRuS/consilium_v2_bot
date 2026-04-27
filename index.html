@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fitness Bot</title>
+
+    <!-- VK Bridge - МНОЖЕСТВО ИСТОЧНИКОВ для надежности -->
     <script src="https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -235,38 +239,76 @@
 
                 // Проверяем загрузку VK Bridge
                 updateStatus('Загрузка VK Bridge...');
-                addDebug('⏳ Ожидание VK Bridge...');
+                addDebug('⏳ Ожидание VK Bridge (удлиненное время)...');
 
-                // Ждем загрузки VK Bridge
+                // Увеличиваем время ожидания и попытки
                 let attempts = 0;
-                const maxAttempts = 10;
+                const maxAttempts = 30; // Увеличили до 30 попыток (3 секунды)
+
+                addDebug('Начинаем проверку vkBridge...');
 
                 while (typeof vkBridge === 'undefined' && attempts < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                     attempts++;
-                    addDebug(`Попытка ${attempts}/${maxAttempts}...`);
+
+                    if (attempts % 5 === 0) {
+                        addDebug(`Попытка ${attempts}/${maxAttempts}...`);
+                    }
                 }
 
                 if (typeof vkBridge === 'undefined') {
-                    throw new Error('VK Bridge не загружен после ' + maxAttempts + ' попыток');
+                    throw new Error('VK Bridge не загружен после ' + maxAttempts + ' попыток (3 секунды)');
                 }
 
-                addDebug('✅ VK Bridge загружен');
+                addDebug('✅ VK Bridge загружен!');
+                addDebug('Тип vkBridge: ' + typeof vkBridge);
+
                 updateStatus('Инициализация VK Bridge...');
 
-                // Отправляем событие инициализации
+                // Отправляем событие инициализации с таймаутом
                 addDebug('⏳ VKWebAppInit...');
-                await vkBridge.send('VKWebAppInit');
-                addDebug('✅ VKWebAppInit выполнен');
 
-                // Получаем данные пользователя
+                try {
+                    await Promise.race([
+                        vkBridge.send('VKWebAppInit'),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут VKWebAppInit')), 5000)
+                    ]);
+                    addDebug('✅ VKWebAppInit выполнен');
+                } catch (initError) {
+                    throw new Error('VKWebAppInit failed: ' + initError.message);
+                }
+
+                // Получаем данные пользователя с таймаутом
                 updateStatus('Получение данных пользователя...');
                 addDebug('⏳ VKWebAppGetUserInfo...');
 
-                const userData = await vkBridge.send('VKWebAppGetUserInfo');
+                try {
+                    const userData = await Promise.race([
+                        vkBridge.send('VKWebAppGetUserInfo'),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут получения данных')), 5000)
+                    ]);
 
-                if (!userData) {
-                    throw new Error('Пустой ответ от VKWebAppGetUserInfo');
+                    if (!userData) {
+                        throw new Error('Пустой ответ от VKWebAppGetUserInfo');
+                    }
+
+                    addDebug('✅ Данные пользователя получены');
+                    addDebug(`👤 User: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
+
+                    vkUser = userData;
+
+                    // Показываем главное меню
+                    document.getElementById('userInfo').innerHTML =
+                        `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
+                        `<small>ID: ${vkUser.id}</small>`;
+
+                    addDebug('🎉 Приложение инициализировано успешно!');
+                    updateStatus('Готово!');
+
+                    setTimeout(showMain, 500);
+
+                } catch (userError) {
+                    throw new Error('Не удалось получить данные пользователя: ' + userError.message);
                 }
 
                 addDebug('✅ Данные пользователя получены');
@@ -318,6 +360,15 @@
             addDebug(`❌ Unhandled rejection: ${event.reason}`);
             console.error('Unhandled rejection:', event);
         });
+
+        // Добавляем дополнительную проверку каждую секунду
+        setInterval(() => {
+            if (typeof vkBridge !== 'undefined') {
+                addDebug('💡 VK Bridge доступен (периодическая проверка)');
+            } else {
+                addDebug('⚠️ VK Bridge всё ещё не доступен');
+            }
+        }, 2000);
     </script>
 </body>
 </html>
