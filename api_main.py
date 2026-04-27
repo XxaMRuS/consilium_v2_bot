@@ -8,6 +8,7 @@ Uses existing database functions without modifying current code
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Optional
 from pydantic import BaseModel
@@ -39,6 +40,11 @@ app = FastAPI(
     description="REST API for Fitness Bot VK Mini App",
     version="0.1.0"
 )
+
+# ==================== STATIC FILES ====================
+
+# Монтируем статические файлы (для vk-bridge.min.js и других)
+app.mount("/static", StaticFiles(directory="."), name="static")
 
 # ==================== CORS MIDDLEWARE ====================
 
