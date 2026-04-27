@@ -87,8 +87,11 @@ async def root():
     file_path = os.path.join(os.path.dirname(__file__), "index.html")
     if os.path.exists(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
+            content = f.read()
+            logger.info(f"Serving index.html, size: {len(content)} bytes")
+            return content
     else:
+        logger.error("index.html not found!")
         return """
         <!DOCTYPE html>
         <html>
