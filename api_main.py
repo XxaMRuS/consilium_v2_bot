@@ -85,6 +85,12 @@ class WorkoutRequest(BaseModel):
     comment: Optional[str] = None
     metric: Optional[str] = None
 
+class VKUserRegisterRequest(BaseModel):
+    """Модель для регистрации VK пользователя"""
+    vk_id: int
+    first_name: str
+    last_name: Optional[str] = ""
+
 # ==================== HEALTH CHECK ====================
 
 @app.get("/", response_class=HTMLResponse)
@@ -189,7 +195,7 @@ async def get_user_profile(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/users/register")
-async def register_user(vk_id: int, first_name: str, last_name: str = ""):
+async def register_user(request: VKUserRegisterRequest):
     """
     Зарегистрировать или обновить пользователя через VK Mini App
 
@@ -201,17 +207,17 @@ async def register_user(vk_id: int, first_name: str, last_name: str = ""):
         # Регистрируем пользователя с vk_id
         success = db_register_user(
             telegram_id=None,  # Нет Telegram ID
-            first_name=first_name,
+            first_name=request.first_name,
             username=None,
-            last_name=last_name,
-            vk_id=vk_id
+            last_name=request.last_name,
+            vk_id=request.vk_id
         )
 
         if success:
             return {
                 "success": True,
                 "message": "User registered successfully",
-                "vk_id": vk_id
+                "vk_id": request.vk_id
             }
         else:
             raise HTTPException(status_code=500, detail="Registration failed")
@@ -219,7 +225,7 @@ async def register_user(vk_id: int, first_name: str, last_name: str = ""):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error registering user {vk_id}: {e}")
+        logger.error(f"Error registering user {request.vk_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== EXERCISES ====================
