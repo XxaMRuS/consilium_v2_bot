@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fitness Bot - Загрузка</title>
+    <title>Fitness Bot</title>
+    <script src="https://vk.com/js/api/xd_connection.js?2" type="text/javascript"></script>
     <style>
         * {
             margin: 0;
@@ -21,9 +22,67 @@
             color: white;
         }
 
-        .loader {
+        .container {
             text-align: center;
-            animation: fadeIn 0.5s ease-in;
+            padding: 20px;
+            max-width: 400px;
+        }
+
+        .logo {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .error {
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
         }
 
         .spinner {
@@ -33,19 +92,7 @@
             border-top: 4px solid white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        .text {
-            font-size: 24px;
-            font-weight: 500;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .version {
-            margin-top: 10px;
-            font-size: 12px;
-            opacity: 0.7;
+            margin: 20px auto;
         }
 
         @keyframes spin {
@@ -53,53 +100,115 @@
             100% { transform: rotate(360deg); }
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="loader">
-        <div class="spinner"></div>
-        <div class="text">Загрузка...</div>
-        <div class="version">Fitness Bot VK Mini App</div>
+    <div class="container">
+        <!-- Загрузочный экран -->
+        <div id="loading">
+            <div class="logo">🏋️</div>
+            <div class="title">Fitness Bot</div>
+            <div class="subtitle">Загрузка приложения...</div>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Главное меню -->
+        <div id="main" class="hidden">
+            <div class="logo">🏋️</div>
+            <div class="title">Fitness Bot</div>
+            <div class="subtitle">Твой персональный тренер</div>
+
+            <div class="status" id="userInfo">
+                Загрузка данных...
+            </div>
+
+            <button class="button" onclick="showProfile()">👤 Профиль</button>
+            <button class="button" onclick="showWorkouts()">💪 Тренировки</button>
+            <button class="button" onclick="showChallenges()">🏆 Челленджи</button>
+        </div>
+
+        <!-- Ошибка -->
+        <div id="error" class="error"></div>
     </div>
 
     <script>
-        // VK SDK initialization
-        window.onload = function() {
-            console.log('Fitness Bot App loading...');
+        let vkUser = null;
+        let vkApp = null;
 
-            // Проверка окружения VK
-            if (typeof VK !== 'undefined') {
+        function showError(message) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('main').classList.add('hidden');
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+        }
+
+        function showMain() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('main').classList.remove('hidden');
+        }
+
+        function showProfile() {
+            if (vkUser) {
+                alert(`Профиль: ${vkUser.first_name} ${vkUser.last_name}`);
+            }
+        }
+
+        function showWorkouts() {
+            alert('Раздел тренировок в разработке');
+        }
+
+        function showChallenges() {
+            alert('Раздел челленджев в разработке');
+        }
+
+        // Инициализация VK SDK
+        window.onload = function() {
+            console.log('App loading...');
+
+            // Проверяем что мы в окружении VK
+            if (typeof VK === 'undefined') {
+                showError('❌ VK SDK не загружен. Откройте приложение через VK.');
+                return;
+            }
+
+            try {
                 VK.init(function() {
-                    console.log('VK SDK initialized');
-                    // Здесь будет инициализация приложения
+                    console.log('VK SDK initialized successfully');
+
+                    // Получаем информацию о пользователе
+                    VK.api('users.get', {}, function(data) {
+                        if (data.response) {
+                            vkUser = data.response[0];
+                            console.log('User info:', vkUser);
+
+                            // Показываем главное меню
+                            document.getElementById('userInfo').innerHTML =
+                                `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
+                                `<small>ID: ${vkUser.id}</small>`;
+
+                            showMain();
+                        } else {
+                            showError('❌ Не удалось получить данные пользователя');
+                        }
+                    });
+
                 }, function() {
-                    console.log('VK API error');
-                }, '5.131');
-            } else {
-                console.log('Running outside VK environment');
-                // Для тестирования вне VK
-                setTimeout(function() {
-                    document.body.innerHTML = `
-                        <div class="loader">
-                            <div class="text" style="font-size: 18px;">
-                                🏋️ Fitness Bot API<br>
-                                <small>Сервер работает!</small>
-                            </div>
-                            <div class="version">
-                                <a href="/docs" style="color: white; text-decoration: underline;">API Documentation</a>
-                            </div>
-                        </div>
-                    `;
-                }, 2000);
+                    console.error('VK API error');
+                    showError('❌ Ошибка VK API. Проверьте настройки приложения.');
+                }, '5.131'); // Версия API
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('❌ Ошибка инициализации: ' + error.message);
             }
         };
     </script>
