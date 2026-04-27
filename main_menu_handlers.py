@@ -67,8 +67,8 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard.append([
                 InlineKeyboardButton("⚙️ Админ", callback_data="admin"),
             ])
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Не удалось проверить права админа: {e}")
 
     # Добавляем кнопку собственника
     try:
@@ -76,8 +76,8 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard.append([
                 InlineKeyboardButton("🔧 Панель", callback_data="owner_menu"),
             ])
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Не удалось проверить права собственника: {e}")
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 

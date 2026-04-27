@@ -116,7 +116,8 @@ def generate_mountain_image(users, group, search_query=None):
         font_nick = ImageFont.truetype("arial.ttf", 13)
         font_score = ImageFont.truetype("arial.ttf", 11)
         font_small = ImageFont.truetype("arial.ttf", 10)
-    except:
+    except Exception as e:
+        logger.warning(f"Не удалось загрузить шрифты, используем default: {e}")
         font_title = ImageFont.load_default()
         font_nick = ImageFont.load_default()
         font_score = ImageFont.load_default()
@@ -177,7 +178,8 @@ def generate_mountain_image(users, group, search_query=None):
 
                     # Вычисляем ширину кирпичика (минимум 90px, максимум 160px)
                     brick_width = max(90, min(160, text_width))
-                except:
+                except Exception as e:
+                    logger.debug(f"Не удалось вычислить точную ширину, используем фолбэк: {e}")
                     # Фолбэк на приблизительный расчет
                     text_width = len(display_name) * 9  # 9px на символ (более точно)
                     brick_width = max(90, min(160, text_width))
@@ -617,18 +619,21 @@ async def mountain_profile_callback(update: Update, context: ContextTypes.DEFAUL
     # Получаем валюты
     try:
         frun_balance = get_user_coin_balance(target_user_id)
-    except:
+    except Exception as e:
+        logger.warning(f"Не удалось получить frun_balance: {e}")
         frun_balance = 0
 
     try:
         fun_fuel = get_fun_fuel_balance(target_user_id)
-    except:
+    except Exception as e:
+        logger.warning(f"Не удалось получить fun_fuel: {e}")
         fun_fuel = 0
 
     # Получаем PvP статистику
     try:
         pvp_stats = get_user_pvp_stats(target_user_id)
-    except:
+    except Exception as e:
+        logger.warning(f"Не удалось получить PvP статистику: {e}")
         pvp_stats = {'total': 0, 'wins': 0, 'losses': 0, 'draws': 0, 'coins_won': 0, 'coins_lost': 0}
 
     # Получаем очки лидера для расчета разрыва
@@ -643,7 +648,8 @@ async def mountain_profile_callback(update: Update, context: ContextTypes.DEFAUL
             gap_text = f"📈 До вершины: {score_gap:,} очков".replace(',', ' ')
         else:
             gap_text = "👑 На вершине!"
-    except:
+    except Exception as e:
+        logger.warning(f"Не удалось рассчитать позицию до вершины: {e}")
         gap_text = "📈 До вершины: рассчитываем..."
 
     group_emoji = "😊 Новичок" if stats['user_group'] == 'newbie' else "😎 Эксперт"

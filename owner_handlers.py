@@ -90,8 +90,8 @@ def owner_only(func):
                     await update.callback_query.answer("❌ Доступ только для собственника", show_alert=True)
                 elif update.message:
                     await update.message.reply_text("❌ Доступ только для собственника")
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"Не удалось отправить сообщение о доступе: {e}")
             return
 
         return await func(update, context)
@@ -105,8 +105,8 @@ async def owner_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     text = "🔧 **ПАНЕЛЬ СОБСТВЕННИКА**\n\n"
     text += "Выберите раздел:"
@@ -147,8 +147,8 @@ async def owner_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -192,8 +192,8 @@ async def owner_balances_callback(update: Update, context: ContextTypes.DEFAULT_
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -258,8 +258,8 @@ async def owner_copy_id_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Извлекаем ID из callback_data
     callback_data = query.data
@@ -293,8 +293,8 @@ async def owner_champions_callback(update: Update, context: ContextTypes.DEFAULT
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from champions_system import get_monthly_champions
     from datetime import datetime
@@ -375,8 +375,8 @@ async def owner_champions_menu_callback(update: Update, context: ContextTypes.DE
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     text = "🏆 **ЧЕМПИОНЫ**\n\n"
     text += "Выберите действие:"
@@ -411,8 +411,8 @@ async def owner_champions_history_callback(update: Update, context: ContextTypes
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from champions_system import get_monthly_champions
     from datetime import datetime
@@ -493,8 +493,8 @@ async def owner_champions_calculate_callback(update: Update, context: ContextTyp
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from datetime import datetime
     today = datetime.now()
@@ -534,8 +534,8 @@ async def owner_champions_calculate_current_callback(update: Update, context: Co
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from datetime import datetime
     today = datetime.now()
@@ -567,8 +567,8 @@ async def owner_champions_confirm_callback(update: Update, context: ContextTypes
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Показываем сообщение о процессе
     text = "⏳ **РАСЧЁТ ЧЕМПИОНОВ**\n\n"
@@ -625,8 +625,8 @@ async def owner_competitions_callback(update: Update, context: ContextTypes.DEFA
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -694,8 +694,8 @@ async def owner_competitions_toggle_callback(update: Update, context: ContextTyp
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Извлекаем exercise_id из callback_data
     callback_data = query.data
@@ -790,8 +790,8 @@ async def owner_ff_info_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -849,8 +849,8 @@ async def owner_ff_transfer_callback(update: Update, context: ContextTypes.DEFAU
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -906,8 +906,8 @@ async def owner_ff_transfer_callback(update: Update, context: ContextTypes.DEFAU
 
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
 
         return ConversationHandler.END
 
@@ -922,8 +922,8 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Извлекаем user_id из callback_data
     callback_data = query.data
@@ -974,8 +974,8 @@ async def owner_ff_select_user_callback(update: Update, context: ContextTypes.DE
 
             try:
                 await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Не удалось отредактировать сообщение: {e}")
             return
 
         # Показываем быстрые суммы
@@ -1045,8 +1045,8 @@ async def owner_ff_manual_input_callback(update: Update, context: ContextTypes.D
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     text = "💸 **ПЕРЕВОД FF**\n\n"
     text += "📝 Введите:\n"
@@ -1156,8 +1156,8 @@ async def owner_ff_amount_callback(update: Update, context: ContextTypes.DEFAULT
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Извлекаем сумму из callback_data
     callback_data = query.data
@@ -1197,8 +1197,8 @@ async def owner_ff_amount_callback(update: Update, context: ContextTypes.DEFAULT
 
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
 
         context.user_data.pop('ff_transfer_target', None)
         context.user_data.pop('ff_transfer_state', None)
@@ -1243,8 +1243,8 @@ async def owner_ff_custom_amount_callback(update: Update, context: ContextTypes.
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     text = "💸 **ПЕРЕВОД FF**\n\n"
     text += "📝 Введите сумму для перевода:"
@@ -1349,8 +1349,8 @@ async def owner_ff_skip_reason_callback(update: Update, context: ContextTypes.DE
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Устанавливаем пустую причину
     context.user_data['ff_transfer_reason'] = None
@@ -1377,8 +1377,8 @@ async def show_ff_confirm_with_reason(update: Update, context: ContextTypes.DEFA
         elif update.callback_query:
             try:
                 await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Не удалось отредактировать callback сообщение: {e}")
         return ConversationHandler.END
 
     from database_postgres import get_fun_fuel_balance
@@ -1427,8 +1427,8 @@ async def owner_ff_transfer_confirm_callback(update: Update, context: ContextTyp
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Получаем данные перевода
     target_user = context.user_data.get('ff_transfer_target')
@@ -1553,8 +1553,8 @@ async def owner_ff_transfer_cancel_callback(update: Update, context: ContextType
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     text = "❌ **ПЕРЕВОД ОТМЕНЁН**"
 
@@ -1583,8 +1583,8 @@ async def owner_competitions_enable_all_callback(update: Update, context: Contex
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1631,8 +1631,8 @@ async def owner_competitions_enable_all_callback(update: Update, context: Contex
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
     finally:
         release_db_connection(conn)
 
@@ -1644,8 +1644,8 @@ async def owner_competitions_disable_all_callback(update: Update, context: Conte
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1692,8 +1692,8 @@ async def owner_competitions_disable_all_callback(update: Update, context: Conte
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
     finally:
         release_db_connection(conn)
 
@@ -1705,8 +1705,8 @@ async def owner_competitions_enable_beginners_callback(update: Update, context: 
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1764,8 +1764,8 @@ async def owner_competitions_enable_beginners_callback(update: Update, context: 
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
     finally:
         release_db_connection(conn)
 
@@ -1777,8 +1777,8 @@ async def owner_pvp_settings_callback(update: Update, context: ContextTypes.DEFA
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from database_postgres import get_all_pvp_settings
 
@@ -1829,8 +1829,8 @@ async def owner_pvp_exercise_callback(update: Update, context: ContextTypes.DEFA
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from database_postgres import get_pvp_setting
 
@@ -1873,8 +1873,8 @@ async def owner_pvp_complex_callback(update: Update, context: ContextTypes.DEFAU
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from database_postgres import get_pvp_setting
 
@@ -1917,8 +1917,8 @@ async def owner_pvp_challenge_callback(update: Update, context: ContextTypes.DEF
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from database_postgres import get_pvp_setting
 
@@ -1961,8 +1961,8 @@ async def owner_pvp_set_percent_callback(update: Update, context: ContextTypes.D
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Извлекаем тип и процент из callback_data
     callback_data = query.data
@@ -2029,8 +2029,8 @@ async def owner_pvp_set_percent_callback(update: Update, context: ContextTypes.D
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
 
 
 @owner_only
@@ -2040,8 +2040,8 @@ async def owner_pvp_custom_percent_callback(update: Update, context: ContextType
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     callback_data = query.data
 
@@ -2538,8 +2538,8 @@ async def owner_pvp_skip_reason_callback(update: Update, context: ContextTypes.D
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Устанавливаем пустую причину
     context.user_data['pvp_transfer_reason'] = None
@@ -2870,8 +2870,8 @@ async def owner_channel_check_callback(update: Update, context: ContextTypes.DEF
         keyboard = [[InlineKeyboardButton("◀️ В меню", callback_data=OWNER_MENU)]]
         try:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отредактировать сообщение: {e}")
 
 
 @owner_only
@@ -3165,8 +3165,8 @@ async def owner_force_finish_pvp_callback(update: Update, context: ContextTypes.
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     try:
         parts = query.data.split(":")
@@ -3293,8 +3293,8 @@ async def owner_finish_pvp_list_callback(update: Update, context: ContextTypes.D
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     from database_postgres import get_db_connection, release_db_connection
 

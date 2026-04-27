@@ -936,8 +936,8 @@ async def admin_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("◀️ В упражнения", callback_data="admin_exercises")]]
         try:
             await update.callback_query.edit_message_text("❌ Добавление упражнения отменено", reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отменить добавление упражнения: {e}")
     elif update.message:
         await update.message.reply_text("❌ Добавление упражнения отменено")
 
@@ -1358,8 +1358,8 @@ async def admin_challenge_cancel(update: Update, context: ContextTypes.DEFAULT_T
         keyboard = [[InlineKeyboardButton("◀️ В челленджи", callback_data="admin_challenges")]]
         try:
             await update.callback_query.edit_message_text("❌ Создание челленджа отменено", reply_markup=InlineKeyboardMarkup(keyboard))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Не удалось отменить создание челленджа: {e}")
     elif update.message:
         await update.message.reply_text("❌ Создание челленджа отменено")
 
@@ -2171,8 +2171,8 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
         if len(selected_exercises) == 0:
             try:
                 await query.edit_message_text("❌ Выберите хотя бы одно упражнение!")
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Не удалось отправить сообщение о выборе упражнений: {e}")
             return COMPLEX_EXERCISE_SELECT
 
         # Получаем данные из context
@@ -2190,7 +2190,8 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
             error_text = f"❌ Ошибка: комплекс с названием '{name}' уже существует!"
             try:
                 await query.edit_message_text(error_text)
-            except:
+            except Exception as edit_error:
+                logger.debug(f"Не удалось отредактировать сообщение, пробуем reply: {edit_error}")
                 await update.message.reply_text(error_text)
             return ConversationHandler.END
 
@@ -2254,7 +2255,8 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
             )
             try:
                 await query.edit_message_text(plain_text, reply_markup=reply_markup)
-            except:
+            except Exception as edit_error:
+                logger.debug(f"Не удалось отредактировать сообщение, пробуем reply: {edit_error}")
                 await update.message.reply_text(plain_text, reply_markup=reply_markup)
 
         return ConversationHandler.END
@@ -2263,8 +2265,8 @@ async def admin_complex_exercise_done(update: Update, context: ContextTypes.DEFA
         logger.error(f"Ошибка при создании комплекса: {e}")
         try:
             await update.message.reply_text(f"❌ Произошла ошибка: {str(e)}")
-        except:
-            pass
+        except Exception as reply_error:
+            logger.error(f"Не удалось отправить сообщение об ошибке: {reply_error}")
         return ConversationHandler.END
 
     finally:
@@ -2464,8 +2466,8 @@ async def admin_view_complex_callback(update: Update, context: ContextTypes.DEFA
                     f"🏋️ Упражнения ({len(exercises)}):\n{exercises_text}"
                 )
                 await query.edit_message_text(plain_text, reply_markup=reply_markup)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Не удалось отредактировать сообщение комплекса: {e}")
 
 
 async def admin_delete_complex_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -19,8 +19,8 @@ async def hall_of_fame_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     # Получаем чемпионов за предыдущий месяц
     today = datetime.now()

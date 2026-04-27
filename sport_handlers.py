@@ -68,8 +68,8 @@ async def sport_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     keyboard = [
         [InlineKeyboardButton("💪 Тренировки", callback_data=SPORT_EXERCISES)],
@@ -91,8 +91,8 @@ async def exercises_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     exercises = get_exercises(active_only=True)
     if not exercises:
@@ -507,8 +507,8 @@ async def challenges_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     challenges = get_challenges_by_status("active")
     if not challenges:
@@ -543,8 +543,8 @@ async def complexes_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     complexes = get_all_complexes(active_only=True)
     if not complexes:
@@ -766,8 +766,8 @@ async def set_complex_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     callback_data = query.data
 
@@ -1203,8 +1203,8 @@ async def sport_ratings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     keyboard = [
         [InlineKeyboardButton("💪 Топ тренировок", callback_data=SPORT_TOP_WORKOUTS)],
@@ -1221,8 +1221,8 @@ async def sport_top_workouts(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     top = get_top_workouts(limit=10)
     if not top:
@@ -1244,8 +1244,8 @@ async def sport_top_challenges(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     top = get_top_challenges(limit=10)
     if not top:
@@ -1267,8 +1267,8 @@ async def sport_top_complexes(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     top = get_top_complexes(limit=10)
     if not top:
@@ -1289,8 +1289,8 @@ async def sport_my_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
         await query.answer()
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Callback query уже был отвечен: {e}")
 
     user_id = update.effective_user.id
     workouts, challenges, complexes = get_user_stats(user_id)

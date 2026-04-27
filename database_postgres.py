@@ -160,14 +160,14 @@ def release_db_connection(conn):
             # Закрываем его вручную
             try:
                 conn.close()
-            except:
-                pass  # Соединение уже закрыто
+            except Exception as e:
+                logger.debug(f"Соединение уже закрыто: {e}")
     else:
         # Если пула нет, просто закрываем соединение
         try:
             conn.close()
-        except:
-            pass  # Соединение уже закрыто
+        except Exception as e:
+            logger.debug(f"Соединение уже закрыто: {e}")
 
 def close_all_connections():
     """Закрывает все соединения в пуле."""
@@ -1464,7 +1464,8 @@ def get_leaderboard_from_scoreboard(limit=10):
             ORDER BY total DESC
             LIMIT %s
         """, (limit,))
-    except:
+    except Exception as e:
+        logger.warning(f"Первичный запрос leaderboard не удался, используем fallback: {e}")
         cur.execute("""
             SELECT user_id, user_id, user_id, COALESCE(SUM(points), 0) as total
             FROM scoreboard
@@ -2078,7 +2079,8 @@ def check_challenge_completion(user_id, challenge_id, target_value, metric):
     if metric == 'reps':
         try:
             return int(current) >= int(target_value)
-        except:
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Не удалось сравнить значения reps: current={current}, target={target_value}, error={e}")
             return False
     else:
         return current <= target_value
@@ -5525,8 +5527,8 @@ def get_complex_records(complex_id, user_level='beginner', limit=3):
             try:
                 user_results[display_name]['total_result'] += float(result_value)
                 user_results[display_name]['count'] += 1
-            except:
-                pass
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Не удалось добавить результат: display_name={display_name}, result_value={result_value}, error={e}")
 
         # Сортируем по суммарному результату
         sorted_results = sorted(

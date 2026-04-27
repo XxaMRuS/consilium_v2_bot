@@ -196,8 +196,8 @@ async def show_user_id(update: Update, context) -> None:
             text += "💰 **Твои балансы:**\n"
             text += f"• FruN Fuel: {ff_balance} FF\n"
             text += f"• Спортивные очки: {score}\n"
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Не удалось получить балансы пользователя: {e}")
 
     if update.message:
         await update.message.reply_text(text, parse_mode="Markdown")
@@ -415,7 +415,8 @@ async def handle_main_menu(update: Update, context) -> None:
         # Получаем PvP-статистику
         try:
             pvp_stats = get_user_pvp_stats(user_id)
-        except:
+        except Exception as e:
+            logger.warning(f"Не удалось получить PvP статистику: {e}")
             pvp_stats = {'total': 0, 'wins': 0, 'losses': 0, 'draws': 0, 'coins_won': 0, 'coins_lost': 0}
 
         text = (
@@ -810,15 +811,16 @@ async def handle_callback_query(update: Update, context) -> None:
         logger.error(f"Ошибка при обработке callback {callback_data}: {e}", exc_info=True)
         try:
             await query.edit_message_text(f"❌ Произошла ошибка: {str(e)}")
-        except:
+        except Exception as edit_error:
+            logger.debug(f"Не удалось отредактировать сообщение, пробуем reply: {edit_error}")
             await query.message.reply_text(f"❌ Произошла ошибка: {str(e)}")
     finally:
         # Безопасный ответ на callback, если еще не был отправлен
         try:
             if not query.answered:
                 await query.answer()
-        except:
-            pass  # Игнорируем ошибки ответа
+        except Exception as e:
+            logger.debug(f"Ошибка ответа на callback: {e}")
 
 
 def main() -> None:

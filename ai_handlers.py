@@ -68,7 +68,8 @@ async def ai_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
         else:
             await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
-    except:
+    except Exception as e:
+        logger.debug(f"Не удалось отправить сообщение с Markdown, пробуем без: {e}")
         if query.message:
             await query.edit_message_text(text, reply_markup=reply_markup)
         else:

@@ -592,7 +592,8 @@ class AICoachSystem:
             workout_date = datetime.strptime(date_str, '%Y-%m-%d')
             delta = datetime.now() - workout_date
             return delta.days <= days
-        except:
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Не удалось распарсить дату: {date_str}, error: {e}")
             return False
 
     def is_available(self) -> dict:
