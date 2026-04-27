@@ -189,34 +189,37 @@ async def get_user_profile(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/users/register")
-async def register_user(user_id: int, first_name: str, last_name: str = ""):
+async def register_user(vk_id: int, first_name: str, last_name: str = ""):
     """
-    Зарегистрировать нового пользователя через VK Mini App
+    Зарегистрировать или обновить пользователя через VK Mini App
 
-    Создает базовую запись пользователя, если её нет
+    Создаёт запись пользователя с vk_id или обновляет существующего
     """
     try:
-        # Проверяем, существует ли пользователь
-        existing_user = get_user_info(user_id)
-        if existing_user:
+        from database_postgres import register_user as db_register_user
+
+        # Регистрируем пользователя с vk_id
+        success = db_register_user(
+            telegram_id=None,  # Нет Telegram ID
+            first_name=first_name,
+            username=None,
+            last_name=last_name,
+            vk_id=vk_id
+        )
+
+        if success:
             return {
                 "success": True,
-                "message": "User already exists",
-                "user_id": user_id
+                "message": "User registered successfully",
+                "vk_id": vk_id
             }
+        else:
+            raise HTTPException(status_code=500, detail="Registration failed")
 
-        # TODO: Добавить реальную регистрацию через database_postgres
-        # Сейчас это заглушка - нужна функция add_user() в database_postgres
-        logger.info(f"Registration request for user {user_id}: {first_name} {last_name}")
-
-        return {
-            "success": False,
-            "message": "Registration through VK Mini App not implemented yet. Please use Telegram bot.",
-            "telegram_bot_link": "https://t.me/your_bot_username"  # TODO: Заменить на реальную ссылку
-        }
-
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error registering user {user_id}: {e}")
+        logger.error(f"Error registering user {vk_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== EXERCISES ====================

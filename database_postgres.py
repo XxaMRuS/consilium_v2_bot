@@ -827,27 +827,43 @@ def load_exercises_from_json_if_empty():
 
 # ==================== РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ====================
 
-def register_user(telegram_id, first_name, username=None, last_name=None):
+def register_user(telegram_id, first_name, username=None, last_name=None, vk_id=None):
     """Регистрирует нового пользователя или обновляет существующего."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         # Проверяем, существует ли пользователь
-        cur.execute("SELECT id FROM users WHERE telegram_id = %s", (telegram_id,))
+        cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (telegram_id,))
         existing = cur.fetchone()
 
         if existing:
-            cur.execute("""
+            update_fields = ["first_name = %s", "last_name = %s", "username = %s"]
+            update_values = [first_name, last_name, username]
+
+            # Если указан vk_id, добавляем его
+            if vk_id:
+                update_fields.append("vk_id = %s")
+                update_values.append(vk_id)
+
+            update_values.append(telegram_id)
+
+            cur.execute(f"""
                 UPDATE users
-                SET first_name = %s, last_name = %s, username = %s
+                SET {', '.join(update_fields)}
                 WHERE telegram_id = %s
-            """, (first_name, last_name, username, telegram_id))
+            """, update_values)
             logger.info(f"Пользователь {telegram_id} обновлён: {first_name}")
         else:
-            cur.execute("""
-                INSERT INTO users (telegram_id, first_name, last_name, username)
-                VALUES (%s, %s, %s, %s)
-            """, (telegram_id, first_name, last_name, username))
+            if vk_id:
+                cur.execute("""
+                    INSERT INTO users (telegram_id, first_name, last_name, username, vk_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (telegram_id, first_name, last_name, username, vk_id))
+            else:
+                cur.execute("""
+                    INSERT INTO users (telegram_id, first_name, last_name, username)
+                    VALUES (%s, %s, %s, %s)
+                """, (telegram_id, first_name, last_name, username))
             logger.info(f"Новый пользователь {telegram_id} зарегистрирован: {first_name}")
 
         conn.commit()
@@ -901,11 +917,12 @@ def get_user_info(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Сначала ищем по telegram_id, потом по vk_id (для VK Mini App)
     cur.execute("""
         SELECT telegram_id, first_name, last_name, username, score, registered_at, user_group
         FROM users
-        WHERE telegram_id = %s
-    """, (user_id,))
+        WHERE telegram_id = %s OR vk_id = %s
+    """, (user_id, user_id))
 
     row = cur.fetchone()
     release_db_connection(conn)  # ИСПРАВЛЕНО: возвращаем в пул!
