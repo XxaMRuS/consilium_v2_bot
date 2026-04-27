@@ -73,6 +73,23 @@
             min-height: 60px;
         }
 
+        .balances {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .balance-item {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            flex: 1;
+            max-width: 100px;
+        }
+
         .debug {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
@@ -126,6 +143,7 @@
             <div class="title">Fitness Bot</div>
             <div class="subtitle">Твой персональный тренер</div>
             <div class="status" id="userInfo"></div>
+            <div class="balances" id="userBalances"></div>
             <button class="button" onclick="testVK()">🔄 Проверить VK</button>
         </div>
 
@@ -215,11 +233,32 @@
                 }
 
                 log(`✅ Пользователь: ${userData.first_name} ${userData.last_name}`);
+                log(`📸 Аватар: ${userData.photo_100 || 'Нет'}`);
+
+                // Получаем баллы с API
+                log('⏳ Получение баллов с API...');
+                const response = await fetch(`/api/users/${userData.id}`);
+                const apiData = await response.json();
+
+                if (!apiData) {
+                    log('⚠️ Не удалось получить баллы');
+                } else {
+                    log(`✅ Баллы получены: ${apiData.balances.score} очков`);
+                }
 
                 // Показываем результат
+                const avatarUrl = userData.photo_100 || 'https://via.placeholder.com/100';
+                const balances = apiData?.balances || { score: 0, coins: 0, fun_fuel: 0 };
+
                 document.getElementById('userInfo').innerHTML =
+                    `<img src="${avatarUrl}" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 3px solid white;"><br>` +
                     `👤 ${userData.first_name} ${userData.last_name}<br>` +
                     `<small>ID: ${userData.id}</small>`;
+
+                document.getElementById('userBalances').innerHTML =
+                    `<div class="balance-item">⭐ ${balances.score}</div>` +
+                    `<div class="balance-item">🪙 ${balances.coins}</div>` +
+                    `<div class="balance-item">⚡ ${balances.fun_fuel}</div>`;
 
                 log('🎉 УСПЕХ!');
 
