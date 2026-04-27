@@ -6,6 +6,7 @@ Uses existing database functions without modifying current code
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pydantic import BaseModel
 import logging
@@ -34,6 +35,16 @@ app = FastAPI(
     title="Fitness Bot API",
     description="REST API for Fitness Bot VK Mini App",
     version="0.1.0"
+)
+
+# ==================== CORS MIDDLEWARE ====================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # В продакшене ограничить конкретные домены
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ==================== PYDANTIC MODELS ====================
@@ -410,13 +421,18 @@ async def get_pvp_challenge_detail(challenge_id: int):
 
 if __name__ == "__main__":
     import uvicorn
+    import os
 
-    logger.info("🚀 Starting Fitness Bot API on http://127.0.0.1:8000")
-    logger.info("📚 Documentation: http://127.0.0.1:8000/docs")
+    # Render (и другие cloud платформы) используют переменную PORT
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+
+    logger.info(f"🚀 Starting Fitness Bot API on {host}:{port}")
+    logger.info(f"📚 Documentation: http://{host}:{port}/docs")
 
     uvicorn.run(
         app,
-        host="127.0.0.1",
-        port=8000,
+        host=host,
+        port=port,
         log_level="info"
     )

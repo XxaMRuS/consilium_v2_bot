@@ -6,3 +6,6 @@ requests
 aiohttp==3.13.5
 pillow
 Flask==3.0.0
+fastapi
+uvicorn
+pydantic

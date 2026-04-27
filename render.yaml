@@ -1,0 +1,23 @@
+services:
+  # Тип сервиса: Web Service
+  - type: web
+    name: fitness-bot-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api_main.py
+
+    # Переменные окружения (будут в Render Dashboard)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12
+
+      - key: RUN_API_SERVER
+        value: true
+
+      # Database URL (задать в Render Dashboard)
+      - key: DATABASE_URL
+        sync: false
+
+      # Telegram Bot Token (не нужен для API, но может пригодиться)
+      - key: BOT_TOKEN
+        sync: false
