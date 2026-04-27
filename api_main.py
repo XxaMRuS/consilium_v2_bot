@@ -58,9 +58,9 @@ class VKMiniAppMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
 
-        # Добавляем заголовки для VK Mini App
-        response.headers["X-Frame-Options"] = "ALLOW-FROM https://vk.com"
-        response.headers["Content-Security-Policy"] = "frame-ancestors https://vk.com"
+        # УБИРАЕМ restrictive CSP для VK Mini Apps
+        response.headers["X-Frame-Options"] = "ALLOWALL"
+        # НЕ добавляем CSP - даём VK загружать скрипты
 
         return response
 
