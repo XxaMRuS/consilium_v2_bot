@@ -188,6 +188,37 @@ async def get_user_profile(user_id: int):
         logger.error(f"Error getting user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/users/register")
+async def register_user(user_id: int, first_name: str, last_name: str = ""):
+    """
+    Зарегистрировать нового пользователя через VK Mini App
+
+    Создает базовую запись пользователя, если её нет
+    """
+    try:
+        # Проверяем, существует ли пользователь
+        existing_user = get_user_info(user_id)
+        if existing_user:
+            return {
+                "success": True,
+                "message": "User already exists",
+                "user_id": user_id
+            }
+
+        # TODO: Добавить реальную регистрацию через database_postgres
+        # Сейчас это заглушка - нужна функция add_user() в database_postgres
+        logger.info(f"Registration request for user {user_id}: {first_name} {last_name}")
+
+        return {
+            "success": False,
+            "message": "Registration through VK Mini App not implemented yet. Please use Telegram bot.",
+            "telegram_bot_link": "https://t.me/your_bot_username"  # TODO: Заменить на реальную ссылку
+        }
+
+    except Exception as e:
+        logger.error(f"Error registering user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==================== EXERCISES ====================
 
 @app.get("/api/exercises")

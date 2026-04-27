@@ -237,28 +237,49 @@
 
                 // Получаем баллы с API
                 log('⏳ Получение баллов с API...');
-                const response = await fetch(`/api/users/${userData.id}`);
-                const apiData = await response.json();
+                let apiData = null;
+                try {
+                    const response = await fetch(`/api/users/${userData.id}`);
 
-                if (!apiData) {
-                    log('⚠️ Не удалось получить баллы');
-                } else {
-                    log(`✅ Баллы получены: ${apiData.balances.score} очков`);
+                    if (response.status === 404) {
+                        log('⚠️ Пользователь не найден в базе данных');
+                        log('💡 Необходимо зарегистрироваться через Telegram бота');
+                        apiData = null;
+                    } else if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    } else {
+                        apiData = await response.json();
+                        log(`✅ Баллы получены: ${apiData.balances.score} очков`);
+                    }
+                } catch (error) {
+                    log(`⚠️ Ошибка API: ${error.message}`);
                 }
 
                 // Показываем результат
                 const avatarUrl = userData.photo_100 || 'https://via.placeholder.com/100';
-                const balances = apiData?.balances || { score: 0, coins: 0, fun_fuel: 0 };
 
                 document.getElementById('userInfo').innerHTML =
                     `<img src="${avatarUrl}" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 3px solid white;"><br>` +
                     `👤 ${userData.first_name} ${userData.last_name}<br>` +
                     `<small>ID: ${userData.id}</small>`;
 
-                document.getElementById('userBalances').innerHTML =
-                    `<div class="balance-item">⭐ ${balances.score}</div>` +
-                    `<div class="balance-item">🪙 ${balances.coins}</div>` +
-                    `<div class="balance-item">⚡ ${balances.fun_fuel}</div>`;
+                if (!apiData) {
+                    document.getElementById('userBalances').innerHTML =
+                        `<div style="background: rgba(255, 200, 0, 0.3); border-radius: 10px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
+                            ⚠️ Вы не зарегистрированы<br>
+                            <small>Для использования функций зарегистрируйтесь через Telegram бота</small><br><br>
+                            <a href="https://t.me/consilium_fitness_bot" target="_blank"
+                               style="background: rgba(255, 255, 255, 0.3); color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; display: inline-block; margin-top: 5px;">
+                                🤖 Открыть Telegram бота
+                            </a>
+                        </div>`;
+                } else {
+                    const balances = apiData.balances || { score: 0, coins: 0, fun_fuel: 0 };
+                    document.getElementById('userBalances').innerHTML =
+                        `<div class="balance-item">⭐ ${balances.score}</div>` +
+                        `<div class="balance-item">🪙 ${balances.coins}</div>` +
+                        `<div class="balance-item">⚡ ${balances.fun_fuel}</div>`;
+                }
 
                 log('🎉 УСПЕХ!');
 
