@@ -6,10 +6,17 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python api_main.py
 
+    # Health check для мониторинга
+    healthCheckPath: /health
+
     # Переменные окружения (будут в Render Dashboard)
     envVars:
       - key: PYTHON_VERSION
         value: 3.12
+
+      - key: PORT
+        generate: true
+        default: 8000
 
       - key: RUN_API_SERVER
         value: true

@@ -104,12 +104,18 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Detailed health check"""
+    """Detailed health check для Render monitoring"""
     return {
         "status": "healthy",
         "service": "fitness-bot-api",
-        "version": "0.1.0"
+        "version": "0.1.0",
+        "timestamp": __import__("time").time()
     }
+
+@app.get("/ping")
+async def ping():
+    """Простой ping для health checks"""
+    return {"pong": True}
 
 @app.get("/xd_receiver.html")
 async def get_xd_receiver():
@@ -461,9 +467,25 @@ if __name__ == "__main__":
     logger.info(f"🚀 Starting Fitness Bot API on {host}:{port}")
     logger.info(f"📚 Documentation: http://{host}:{port}/docs")
 
-    uvicorn.run(
+    # Конфигурация для Render - предотвращение падений
+    config = uvicorn.Config(
         app,
         host=host,
         port=port,
-        log_level="info"
+        log_level="info",
+        access_log=True,
+        # Увеличиваем лимиты для стабильности
+        limit_concurrency=100,
+        limit_max_requests=1000,
+        timeout_keep_alive=30
     )
+
+    server = uvicorn.Server(config)
+
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        logger.info("👋 Server stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Server error: {e}")
+        raise
