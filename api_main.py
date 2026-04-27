@@ -120,6 +120,16 @@ async def ping():
     """Простой ping для health checks"""
     return {"pong": True}
 
+@app.get("/test")
+async def test_page():
+    """Тестовая страница для диагностики VK Bridge"""
+    file_path = os.path.join(os.path.dirname(__file__), "test.html")
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    else:
+        return "<h1>❌ test.html не найден</h1>"
+
 @app.get("/xd_receiver.html")
 async def get_xd_receiver():
     """VK XD Receiver для кросс-доменной коммуникации"""
