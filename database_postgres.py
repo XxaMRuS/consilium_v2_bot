@@ -832,44 +832,69 @@ def register_user(telegram_id, first_name, username=None, last_name=None, vk_id=
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Проверяем, существует ли пользователь
-        cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (telegram_id,))
-        existing = cur.fetchone()
+        # Если vk_id указан, ищем по нему
+        if vk_id and not telegram_id:
+            cur.execute("SELECT telegram_id FROM users WHERE vk_id = %s", (vk_id,))
+            existing = cur.fetchone()
 
-        if existing:
-            update_fields = ["first_name = %s", "last_name = %s", "username = %s"]
-            update_values = [first_name, last_name, username]
-
-            # Если указан vk_id, добавляем его
-            if vk_id:
-                update_fields.append("vk_id = %s")
-                update_values.append(vk_id)
-
-            update_values.append(telegram_id)
-
-            cur.execute(f"""
-                UPDATE users
-                SET {', '.join(update_fields)}
-                WHERE telegram_id = %s
-            """, update_values)
-            logger.info(f"Пользователь {telegram_id} обновлён: {first_name}")
-        else:
-            if vk_id:
+            if existing:
+                # Пользователь с таким vk_id уже существует, обновляем
                 cur.execute("""
-                    INSERT INTO users (telegram_id, first_name, last_name, username, vk_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (telegram_id, first_name, last_name, username, vk_id))
+                    UPDATE users
+                    SET first_name = %s, last_name = %s, username = %s
+                    WHERE vk_id = %s
+                """, (first_name, last_name, username, vk_id))
+                logger.info(f"Пользователь с vk_id={vk_id} обновлён: {first_name}")
             else:
+                # Создаём нового пользователя с vk_id
                 cur.execute("""
-                    INSERT INTO users (telegram_id, first_name, last_name, username)
+                    INSERT INTO users (vk_id, first_name, last_name, username)
                     VALUES (%s, %s, %s, %s)
-                """, (telegram_id, first_name, last_name, username))
-            logger.info(f"Новый пользователь {telegram_id} зарегистрирован: {first_name}")
+                """, (vk_id, first_name, last_name, username))
+                logger.info(f"Новый пользователь с vk_id={vk_id} зарегистрирован: {first_name}")
+
+        elif telegram_id:
+            # Обычная регистрация через Telegram
+            cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (telegram_id,))
+            existing = cur.fetchone()
+
+            if existing:
+                update_fields = ["first_name = %s", "last_name = %s", "username = %s"]
+                update_values = [first_name, last_name, username]
+
+                # Если указан vk_id, добавляем его
+                if vk_id:
+                    update_fields.append("vk_id = %s")
+                    update_values.append(vk_id)
+
+                update_values.append(telegram_id)
+
+                cur.execute(f"""
+                    UPDATE users
+                    SET {', '.join(update_fields)}
+                    WHERE telegram_id = %s
+                """, update_values)
+                logger.info(f"Пользователь {telegram_id} обновлён: {first_name}")
+            else:
+                if vk_id:
+                    cur.execute("""
+                        INSERT INTO users (telegram_id, first_name, last_name, username, vk_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (telegram_id, first_name, last_name, username, vk_id))
+                else:
+                    cur.execute("""
+                        INSERT INTO users (telegram_id, first_name, last_name, username)
+                        VALUES (%s, %s, %s, %s)
+                    """, (telegram_id, first_name, last_name, username))
+                logger.info(f"Новый пользователь {telegram_id} зарегистрирован: {first_name}")
+        else:
+            logger.error("Ни telegram_id ни vk_id не указаны")
+            return False
 
         conn.commit()
         return True
     except Exception as e:
-        logger.error(f"Ошибка регистрации пользователя {telegram_id}: {e}")
+        logger.error(f"Ошибка регистрации пользователя: {e}")
         return False
     finally:
         release_db_connection(conn)
