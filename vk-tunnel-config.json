@@ -1,0 +1,10 @@
+{
+  "app_id": 54567668,
+  "port": 8000,
+  "endpoint": "local",
+  "https": {
+    "enabled": true,
+    "key": "./certs/key.pem",
+    "cert": "./certs/cert.pem"
+  }
+}
