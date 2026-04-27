@@ -8,6 +8,7 @@ Uses existing database functions without modifying current code
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Optional
 from pydantic import BaseModel
 import logging
@@ -48,6 +49,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==================== VK MINI APP HEADERS ====================
+
+class VKMiniAppMiddleware(BaseHTTPMiddleware):
+    """Middleware для добавления заголовков VK Mini App"""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        # Добавляем заголовки для VK Mini App
+        response.headers["X-Frame-Options"] = "ALLOW-FROM https://vk.com"
+        response.headers["Content-Security-Policy"] = "frame-ancestors https://vk.com"
+
+        return response
+
+app.add_middleware(VKMiniAppMiddleware)
 
 # ==================== PYDANTIC MODELS ====================
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fitness Bot</title>
-    <script src="https://vk.com/js/api/xd_connection.js?2" type="text/javascript"></script>
+    <script src="https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -65,6 +65,7 @@
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             margin: 10px;
+            display: inline-block;
         }
 
         .button:hover {
@@ -141,9 +142,9 @@
 
     <script>
         let vkUser = null;
-        let vkApp = null;
 
         function showError(message) {
+            console.error('Error:', message);
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('main').classList.add('hidden');
             const errorDiv = document.getElementById('error');
@@ -170,45 +171,42 @@
             alert('Раздел челленджев в разработке');
         }
 
-        // Инициализация VK SDK
-        window.onload = function() {
+        // Инициализация VK Bridge
+        window.onload = async function() {
             console.log('App loading...');
 
-            // Проверяем что мы в окружении VK
-            if (typeof VK === 'undefined') {
-                showError('❌ VK SDK не загружен. Откройте приложение через VK.');
+            // Проверяем что VK Bridge загружен
+            if (typeof vkBridge === 'undefined') {
+                showError('❌ VK Bridge не загружен. Откройте приложение через VK Mini App.');
                 return;
             }
 
             try {
-                VK.init(function() {
-                    console.log('VK SDK initialized successfully');
+                // Отправляем событие готовности приложения
+                await vkBridge.send('VKWebAppInit');
 
-                    // Получаем информацию о пользователе
-                    VK.api('users.get', {}, function(data) {
-                        if (data.response) {
-                            vkUser = data.response[0];
-                            console.log('User info:', vkUser);
+                console.log('VK Bridge initialized successfully');
 
-                            // Показываем главное меню
-                            document.getElementById('userInfo').innerHTML =
-                                `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
-                                `<small>ID: ${vkUser.id}</small>`;
+                // Получаем данные пользователя
+                const userData = await vkBridge.send('VKWebAppGetUserInfo');
 
-                            showMain();
-                        } else {
-                            showError('❌ Не удалось получить данные пользователя');
-                        }
-                    });
+                if (userData && userData.id) {
+                    vkUser = userData;
+                    console.log('User info:', vkUser);
 
-                }, function() {
-                    console.error('VK API error');
-                    showError('❌ Ошибка VK API. Проверьте настройки приложения.');
-                }, '5.131'); // Версия API
+                    // Показываем главное меню
+                    document.getElementById('userInfo').innerHTML =
+                        `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
+                        `<small>ID: ${vkUser.id}</small>`;
+
+                    showMain();
+                } else {
+                    showError('❌ Не удалось получить данные пользователя');
+                }
 
             } catch (error) {
-                console.error('Initialization error:', error);
-                showError('❌ Ошибка инициализации: ' + error.message);
+                console.error('VK Bridge error:', error);
+                showError('❌ Ошибка VK Bridge: ' + error.message);
             }
         };
     </script>
