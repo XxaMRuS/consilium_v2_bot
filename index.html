@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fitness Bot</title>
-    <script src="https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -52,6 +51,19 @@
             padding: 15px;
             margin-bottom: 20px;
             font-size: 14px;
+            min-height: 60px;
+        }
+
+        .debug {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 11px;
+            font-family: monospace;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
         }
 
         .button {
@@ -77,15 +89,6 @@
             transform: translateY(0);
         }
 
-        .error {
-            background: rgba(255, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            display: none;
-        }
-
         .spinner {
             width: 50px;
             height: 50px;
@@ -109,6 +112,22 @@
         .hidden {
             display: none;
         }
+
+        .error {
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -117,7 +136,9 @@
         <div id="loading">
             <div class="logo">🏋️</div>
             <div class="title">Fitness Bot</div>
-            <div class="subtitle">Загрузка приложения...</div>
+            <div class="subtitle">Инициализация...</div>
+            <div class="status" id="loadingStatus">Проверка окружения...</div>
+            <div class="debug" id="debugLog"></div>
             <div class="spinner"></div>
         </div>
 
@@ -127,7 +148,7 @@
             <div class="title">Fitness Bot</div>
             <div class="subtitle">Твой персональный тренер</div>
 
-            <div class="status" id="userInfo">
+            <div class="success" id="userInfo">
                 Загрузка данных...
             </div>
 
@@ -137,19 +158,32 @@
         </div>
 
         <!-- Ошибка -->
-        <div id="error" class="error"></div>
+        <div id="error" class="hidden"></div>
     </div>
 
     <script>
         let vkUser = null;
+        const debugLog = document.getElementById('debugLog');
+        const loadingStatus = document.getElementById('loadingStatus');
+
+        function addDebug(message) {
+            const time = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${time}] ${message}<br>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message) {
+            loadingStatus.textContent = message;
+        }
 
         function showError(message) {
-            console.error('Error:', message);
+            addDebug('❌ ОШИБКА: ' + message);
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('main').classList.add('hidden');
             const errorDiv = document.getElementById('error');
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            errorDiv.innerHTML = `<div class="error">${message}</div>`;
         }
 
         function showMain() {
@@ -159,56 +193,130 @@
 
         function showProfile() {
             if (vkUser) {
-                alert(`Профиль: ${vkUser.first_name} ${vkUser.last_name}`);
+                alert(`👤 Профиль\n\nИмя: ${vkUser.first_name} ${vkUser.last_name}\nID: ${vkUser.id}`);
             }
         }
 
         function showWorkouts() {
-            alert('Раздел тренировок в разработке');
+            alert('💪 Раздел тренировок в разработке');
         }
 
         function showChallenges() {
-            alert('Раздел челленджев в разработке');
+            alert('🏆 Раздел челленджев в разработке');
         }
 
-        // Инициализация VK Bridge
-        window.onload = async function() {
-            console.log('App loading...');
+        // Проверка окружения
+        function detectEnvironment() {
+            addDebug('🔍 Проверка окружения...');
 
-            // Проверяем что VK Bridge загружен
-            if (typeof vkBridge === 'undefined') {
-                showError('❌ VK Bridge не загружен. Откройте приложение через VK Mini App.');
-                return;
-            }
+            // Проверка User Agent
+            const ua = navigator.userAgent;
+            addDebug(`UA: ${ua.substring(0, 100)}...`);
+
+            // Проверка на VK приложение
+            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+            addDebug(`VK App: ${isVK ? '✅ Да' : '❌ Нет'}`);
+
+            // Проверка на iframe
+            const inIframe = window.parent !== window;
+            addDebug(`Iframe: ${inIframe ? '✅ Да' : '❌ Нет'}`);
+
+            return { isVK, inIframe };
+        }
+
+        // Инициализация приложения
+        window.onload = async function() {
+            addDebug('🚀 Старт приложения');
 
             try {
-                // Отправляем событие готовности приложения
-                await vkBridge.send('VKWebAppInit');
+                // Определяем окружение
+                const env = detectEnvironment();
 
-                console.log('VK Bridge initialized successfully');
+                // Проверяем загрузку VK Bridge
+                updateStatus('Загрузка VK Bridge...');
+                addDebug('⏳ Ожидание VK Bridge...');
 
-                // Получаем данные пользователя
-                const userData = await vkBridge.send('VKWebAppGetUserInfo');
+                // Ждем загрузки VK Bridge
+                let attempts = 0;
+                const maxAttempts = 10;
 
-                if (userData && userData.id) {
-                    vkUser = userData;
-                    console.log('User info:', vkUser);
-
-                    // Показываем главное меню
-                    document.getElementById('userInfo').innerHTML =
-                        `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
-                        `<small>ID: ${vkUser.id}</small>`;
-
-                    showMain();
-                } else {
-                    showError('❌ Не удалось получить данные пользователя');
+                while (typeof vkBridge === 'undefined' && attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                    addDebug(`Попытка ${attempts}/${maxAttempts}...`);
                 }
 
+                if (typeof vkBridge === 'undefined') {
+                    throw new Error('VK Bridge не загружен после ' + maxAttempts + ' попыток');
+                }
+
+                addDebug('✅ VK Bridge загружен');
+                updateStatus('Инициализация VK Bridge...');
+
+                // Отправляем событие инициализации
+                addDebug('⏳ VKWebAppInit...');
+                await vkBridge.send('VKWebAppInit');
+                addDebug('✅ VKWebAppInit выполнен');
+
+                // Получаем данные пользователя
+                updateStatus('Получение данных пользователя...');
+                addDebug('⏳ VKWebAppGetUserInfo...');
+
+                const userData = await vkBridge.send('VKWebAppGetUserInfo');
+
+                if (!userData) {
+                    throw new Error('Пустой ответ от VKWebAppGetUserInfo');
+                }
+
+                addDebug('✅ Данные пользователя получены');
+                addDebug(`👤 User: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
+
+                vkUser = userData;
+
+                // Показываем главное меню
+                document.getElementById('userInfo').innerHTML =
+                    `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
+                    `<small>ID: ${vkUser.id}</small>`;
+
+                addDebug('🎉 Приложение инициализировано успешно!');
+                updateStatus('Готово!');
+
+                setTimeout(showMain, 500);
+
             } catch (error) {
-                console.error('VK Bridge error:', error);
-                showError('❌ Ошибка VK Bridge: ' + error.message);
+                console.error('App error:', error);
+                addDebug('❌ Критическая ошибка: ' + error.message);
+
+                // Показываем детальную информацию об ошибке
+                let errorDetails = `❌ Ошибка инициализации\n\n`;
+                errorDetails += `Сообщение: ${error.message}\n\n`;
+
+                if (error.message.includes('VK Bridge')) {
+                    errorDetails += `Возможные причины:\n`;
+                    errorDetails += `• Приложение открыто не через VK Mini Apps\n`;
+                    errorDetails += `• Проблемы с интернетом\n`;
+                    errorDetails += `• Блокировка скриптов\n\n`;
+                    errorDetails += `Решение:\n`;
+                    errorDetails += `Откройте приложение через VK Mini Apps`;
+                } else {
+                    errorDetails += `Stack: ${error.stack || 'Нет'}`;
+                }
+
+                showError(errorDetails);
             }
         };
+
+        // Добавляем обработчик ошибок
+        window.onerror = function(message, source, lineno, colno, error) {
+            addDebug(`❌ Global error: ${message}`);
+            console.error('Global error:', error);
+        };
+
+        // Добавляем обработчик unhandled rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            addDebug(`❌ Unhandled rejection: ${event.reason}`);
+            console.error('Unhandled rejection:', event);
+        });
     </script>
 </body>
 </html>
