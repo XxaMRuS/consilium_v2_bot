@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fitness Bot - Загрузка</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: white;
+        }
+
+        .loader {
+            text-align: center;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .text {
+            font-size: 24px;
+            font-weight: 500;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .version {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <div class="text">Загрузка...</div>
+        <div class="version">Fitness Bot VK Mini App</div>
+    </div>
+
+    <script>
+        // VK SDK initialization
+        window.onload = function() {
+            console.log('Fitness Bot App loading...');
+
+            // Проверка окружения VK
+            if (typeof VK !== 'undefined') {
+                VK.init(function() {
+                    console.log('VK SDK initialized');
+                    // Здесь будет инициализация приложения
+                }, function() {
+                    console.log('VK API error');
+                }, '5.131');
+            } else {
+                console.log('Running outside VK environment');
+                // Для тестирования вне VK
+                setTimeout(function() {
+                    document.body.innerHTML = `
+                        <div class="loader">
+                            <div class="text" style="font-size: 18px;">
+                                🏋️ Fitness Bot API<br>
+                                <small>Сервер работает!</small>
+                            </div>
+                            <div class="version">
+                                <a href="/docs" style="color: white; text-decoration: underline;">API Documentation</a>
+                            </div>
+                        </div>
+                    `;
+                }, 2000);
+            }
+        };
+    </script>
+</body>
+</html>

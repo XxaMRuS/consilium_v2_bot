@@ -7,7 +7,7 @@ Uses existing database functions without modifying current code
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from typing import Optional
 from pydantic import BaseModel
 import logging
@@ -64,23 +64,26 @@ class WorkoutRequest(BaseModel):
 
 # ==================== HEALTH CHECK ====================
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Health check endpoint"""
-    return {
-        "message": "Fitness Bot API",
-        "version": "0.1.0",
-        "status": "running",
-        "endpoints": {
-            "users": "/api/users/{user_id}",
-            "exercises": "/api/exercises",
-            "workouts": "/api/workouts",
-            "leaderboard": "/api/leaderboard",
-            "pvp": "/api/pvp/stats/{user_id}",
-            "health": "/health",
-            "docs": "/docs (Swagger UI)"
-        }
-    }
+    """VK Mini App главная страница"""
+    file_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    else:
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Fitness Bot</title>
+        </head>
+        <body style="background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif;">
+            <div>Загрузка...</div>
+        </body>
+        </html>
+        """
 
 @app.get("/health")
 async def health():
