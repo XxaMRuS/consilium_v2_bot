@@ -21,7 +21,7 @@ dev: ## Запустить с автоперезагрузкой
 
 tunnel: ## Запустить VK Tunnel
 	@echo "🌐 Запуск VK Tunnel..."
-	vk-tunnel --mode=local --http-port=8000 --https-port=6001
+	vk-tunnel --app-id=54567668 --http-port=8000 --https-port=6001 --mode=local
 
 certs: ## Сгенерировать SSL сертификаты
 	@echo "🔐 Генерация SSL сертификатов..."
