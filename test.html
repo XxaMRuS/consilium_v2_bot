@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Fitness Bot Test</title>
+    <!-- VK Bridge - ЛОКАЛЬНАЯ ВЕРСИЯ -->
+    <script src="vk-bridge.min.js"></script>
 </head>
 <body style="background: #000; color: #fff; font-family: Arial; text-align: center; padding: 20px;">
     <h1>🏋️ ТЕСТОВАЯ СТРАНИЦА</h1>
@@ -28,19 +30,6 @@
             } else {
                 document.getElementById('status').innerHTML += '<br>❌ VK Bridge НЕ доступен';
                 console.log('❌ VK Bridge НЕ доступен');
-
-                // Пробуем загрузить вручную
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js';
-                script.onload = function() {
-                    document.getElementById('status').innerHTML += '<br>✅ VK Bridge ЗАГРУЖЕН!';
-                    console.log('✅ VK Bridge загружен вручную');
-                };
-                script.onerror = function() {
-                    document.getElementById('status').innerHTML += '<br>❌ VK Bridge НЕ загрузился';
-                    console.log('❌ VK Bridge не загрузился');
-                };
-                document.head.appendChild(script);
             }
         }, 1000);
     </script>

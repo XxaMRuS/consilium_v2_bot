@@ -5,33 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fitness Bot</title>
 
-    <!-- VK Bridge - ПРЯМАЯ ЗАГРУЗКА БЕЗ CDN -->
-    <script>
-        // Пытаемся загрузить VK Bridge напрямую
-        (function() {
-            const script = document.createElement('script');
-            script.async = true;
-            script.src = 'https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js';
-            script.onload = function() {
-                console.log('VK Bridge loaded from unpkg');
-            };
-            script.onerror = function() {
-                console.error('Failed to load VK Bridge from unpkg');
-                // Пытаемся из jsdelivr
-                const script2 = document.createElement('script');
-                script2.async = true;
-                script2.src = 'https://cdn.jsdelivr.net/npm/@vkcom/vk-bridge/dist/vk-bridge.min.js';
-                script2.onload = function() {
-                    console.log('VK Bridge loaded from jsdelivr');
-                };
-                script2.onerror = function() {
-                    console.error('Failed to load VK Bridge from jsdelivr');
-                };
-                document.head.appendChild(script2);
-            };
-            document.head.appendChild(script);
-        })();
-    </script>
+    <!-- VK Bridge - ЛОКАЛЬНАЯ ВЕРСИЯ -->
+    <script src="vk-bridge.min.js"></script>
 
     <style>
         * {
