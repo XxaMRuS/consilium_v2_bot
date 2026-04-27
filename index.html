@@ -5,9 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fitness Bot</title>
 
-    <!-- VK Bridge - МНОЖЕСТВО ИСТОЧНИКОВ для надежности -->
-    <script src="https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@vkcom/vk-bridge/dist/vk-bridge.min.js"></script>
+    <!-- VK Bridge - ПРЯМАЯ ЗАГРУЗКА БЕЗ CDN -->
+    <script>
+        // Пытаемся загрузить VK Bridge напрямую
+        (function() {
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = 'https://unpkg.com/@vkcom/vk-bridge/dist/vk-bridge.min.js';
+            script.onload = function() {
+                console.log('VK Bridge loaded from unpkg');
+            };
+            script.onerror = function() {
+                console.error('Failed to load VK Bridge from unpkg');
+                // Пытаемся из jsdelivr
+                const script2 = document.createElement('script');
+                script2.async = true;
+                script2.src = 'https://cdn.jsdelivr.net/npm/@vkcom/vk-bridge/dist/vk-bridge.min.js';
+                script2.onload = function() {
+                    console.log('VK Bridge loaded from jsdelivr');
+                };
+                script2.onerror = function() {
+                    console.error('Failed to load VK Bridge from jsdelivr');
+                };
+                document.head.appendChild(script2);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
 
     <style>
         * {
@@ -22,7 +46,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: white;
         }
 
@@ -35,7 +59,6 @@
         .logo {
             font-size: 60px;
             margin-bottom: 20px;
-            animation: bounce 2s infinite;
         }
 
         .title {
@@ -80,38 +103,7 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
             margin: 10px;
-            display: inline-block;
-        }
-
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-
-        .button:active {
-            transform: translateY(0);
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
         }
 
         .hidden {
@@ -124,71 +116,40 @@
             padding: 15px;
             margin-bottom: 20px;
             font-size: 14px;
-        }
-
-        .success {
-            background: rgba(0, 255, 0, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Загрузочный экран -->
         <div id="loading">
             <div class="logo">🏋️</div>
             <div class="title">Fitness Bot</div>
-            <div class="subtitle">Инициализация...</div>
-            <div class="status" id="loadingStatus">Проверка окружения...</div>
-            <div class="debug" id="debugLog"></div>
-            <div class="spinner"></div>
+            <div class="subtitle">Загрузка...</div>
+            <div class="status" id="status">Инициализация...</div>
+            <div class="debug" id="debug"></div>
         </div>
 
-        <!-- Главное меню -->
         <div id="main" class="hidden">
             <div class="logo">🏋️</div>
             <div class="title">Fitness Bot</div>
             <div class="subtitle">Твой персональный тренер</div>
-
-            <div class="success" id="userInfo">
-                Загрузка данных...
-            </div>
-
-            <button class="button" onclick="showProfile()">👤 Профиль</button>
-            <button class="button" onclick="showWorkouts()">💪 Тренировки</button>
-            <button class="button" onclick="showChallenges()">🏆 Челленджи</button>
+            <div class="status" id="userInfo"></div>
+            <button class="button" onclick="testVK()">🔄 Проверить VK</button>
         </div>
 
-        <!-- Ошибка -->
         <div id="error" class="hidden"></div>
     </div>
 
     <script>
-        let vkUser = null;
-        const debugLog = document.getElementById('debugLog');
-        const loadingStatus = document.getElementById('loadingStatus');
+        const debugDiv = document.getElementById('debug');
+        const statusDiv = document.getElementById('status');
 
-        function addDebug(message) {
+        function log(msg) {
             const time = new Date().toLocaleTimeString();
-            debugLog.innerHTML += `[${time}] ${message}<br>`;
-            debugLog.scrollTop = debugLog.scrollHeight;
-            console.log(message);
-        }
-
-        function updateStatus(message) {
-            loadingStatus.textContent = message;
-        }
-
-        function showError(message) {
-            addDebug('❌ ОШИБКА: ' + message);
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('main').classList.add('hidden');
-            const errorDiv = document.getElementById('error');
-            errorDiv.classList.remove('hidden');
-            errorDiv.innerHTML = `<div class="error">${message}</div>`;
+            debugDiv.innerHTML += `[${time}] ${msg}<br>`;
+            console.log(msg);
+            debugDiv.scrollTop = debugDiv.scrollHeight;
         }
 
         function showMain() {
@@ -196,179 +157,88 @@
             document.getElementById('main').classList.remove('hidden');
         }
 
-        function showProfile() {
-            if (vkUser) {
-                alert(`👤 Профиль\n\nИмя: ${vkUser.first_name} ${vkUser.last_name}\nID: ${vkUser.id}`);
+        function showError(msg) {
+            log('❌ ' + msg);
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('main').classList.add('hidden');
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = msg;
+        }
+
+        function testVK() {
+            log('🧪 Тест VK Bridge...');
+            if (typeof vkBridge !== 'undefined') {
+                log('✅ vkBridge доступен!');
+                log('Тип: ' + typeof vkBridge);
+                log('Методы: ' + Object.keys(vkBridge).join(', '));
+            } else {
+                log('❌ vkBridge НЕ доступен');
             }
         }
 
-        function showWorkouts() {
-            alert('💪 Раздел тренировок в разработке');
-        }
-
-        function showChallenges() {
-            alert('🏆 Раздел челленджев в разработке');
-        }
-
-        // Проверка окружения
-        function detectEnvironment() {
-            addDebug('🔍 Проверка окружения...');
-
-            // Проверка User Agent
-            const ua = navigator.userAgent;
-            addDebug(`UA: ${ua.substring(0, 100)}...`);
-
-            // Проверка на VK приложение
-            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
-            addDebug(`VK App: ${isVK ? '✅ Да' : '❌ Нет'}`);
-
-            // Проверка на iframe
-            const inIframe = window.parent !== window;
-            addDebug(`Iframe: ${inIframe ? '✅ Да' : '❌ Нет'}`);
-
-            return { isVK, inIframe };
-        }
-
-        // Инициализация приложения
+        // Простая инициализация
         window.onload = async function() {
-            addDebug('🚀 Старт приложения');
+            log('🚀 Старт приложения');
 
             try {
-                // Определяем окружение
-                const env = detectEnvironment();
+                // Проверяем окружение
+                const ua = navigator.userAgent;
+                log('📱 User Agent: ' + ua.substring(0, 50) + '...');
 
-                // Проверяем загрузку VK Bridge
-                updateStatus('Загрузка VK Bridge...');
-                addDebug('⏳ Ожидание VK Bridge (удлиненное время)...');
+                const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+                log('VK App: ' + (isVK ? '✅ Да' : '❌ Нет'));
 
-                // Увеличиваем время ожидания и попытки
+                // Ждем VK Bridge до 10 секунд
+                log('⏳ Ожидание VK Bridge...');
+
                 let attempts = 0;
-                const maxAttempts = 30; // Увеличили до 30 попыток (3 секунды)
-
-                addDebug('Начинаем проверку vkBridge...');
+                const maxAttempts = 100; // 10 секунд
 
                 while (typeof vkBridge === 'undefined' && attempts < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                     attempts++;
 
-                    if (attempts % 5 === 0) {
-                        addDebug(`Попытка ${attempts}/${maxAttempts}...`);
+                    if (attempts % 10 === 0) {
+                        log(`⏳ Проверка ${attempts}/${maxAttempts}...`);
                     }
                 }
 
                 if (typeof vkBridge === 'undefined') {
-                    throw new Error('VK Bridge не загружен после ' + maxAttempts + ' попыток (3 секунды)');
+                    throw new Error('VK Bridge не загружен за 10 секунд');
                 }
 
-                addDebug('✅ VK Bridge загружен!');
-                addDebug('Тип vkBridge: ' + typeof vkBridge);
+                log('✅ VK Bridge загружен!');
 
-                updateStatus('Инициализация VK Bridge...');
+                // Инициализация
+                log('⏳ VKWebAppInit...');
+                await vkBridge.send('VKWebAppInit');
+                log('✅ VKWebAppInit OK');
 
-                // Отправляем событие инициализации с таймаутом
-                addDebug('⏳ VKWebAppInit...');
+                // Получаем данные
+                log('⏳ VKWebAppGetUserInfo...');
+                const userData = await vkBridge.send('VKWebAppGetUserInfo');
 
-                try {
-                    await Promise.race([
-                        vkBridge.send('VKWebAppInit'),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут VKWebAppInit')), 5000)
-                    ]);
-                    addDebug('✅ VKWebAppInit выполнен');
-                } catch (initError) {
-                    throw new Error('VKWebAppInit failed: ' + initError.message);
+                if (!userData) {
+                    throw new Error('Нет данных пользователя');
                 }
 
-                // Получаем данные пользователя с таймаутом
-                updateStatus('Получение данных пользователя...');
-                addDebug('⏳ VKWebAppGetUserInfo...');
+                log(`✅ Пользователь: ${userData.first_name} ${userData.last_name}`);
 
-                try {
-                    const userData = await Promise.race([
-                        vkBridge.send('VKWebAppGetUserInfo'),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут получения данных')), 5000)
-                    ]);
-
-                    if (!userData) {
-                        throw new Error('Пустой ответ от VKWebAppGetUserInfo');
-                    }
-
-                    addDebug('✅ Данные пользователя получены');
-                    addDebug(`👤 User: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
-
-                    vkUser = userData;
-
-                    // Показываем главное меню
-                    document.getElementById('userInfo').innerHTML =
-                        `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
-                        `<small>ID: ${vkUser.id}</small>`;
-
-                    addDebug('🎉 Приложение инициализировано успешно!');
-                    updateStatus('Готово!');
-
-                    setTimeout(showMain, 500);
-
-                } catch (userError) {
-                    throw new Error('Не удалось получить данные пользователя: ' + userError.message);
-                }
-
-                addDebug('✅ Данные пользователя получены');
-                addDebug(`👤 User: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
-
-                vkUser = userData;
-
-                // Показываем главное меню
+                // Показываем результат
                 document.getElementById('userInfo').innerHTML =
-                    `👤 ${vkUser.first_name} ${vkUser.last_name}<br>` +
-                    `<small>ID: ${vkUser.id}</small>`;
+                    `👤 ${userData.first_name} ${userData.last_name}<br>` +
+                    `<small>ID: ${userData.id}</small>`;
 
-                addDebug('🎉 Приложение инициализировано успешно!');
-                updateStatus('Готово!');
+                log('🎉 УСПЕХ!');
 
                 setTimeout(showMain, 500);
 
             } catch (error) {
-                console.error('App error:', error);
-                addDebug('❌ Критическая ошибка: ' + error.message);
-
-                // Показываем детальную информацию об ошибке
-                let errorDetails = `❌ Ошибка инициализации\n\n`;
-                errorDetails += `Сообщение: ${error.message}\n\n`;
-
-                if (error.message.includes('VK Bridge')) {
-                    errorDetails += `Возможные причины:\n`;
-                    errorDetails += `• Приложение открыто не через VK Mini Apps\n`;
-                    errorDetails += `• Проблемы с интернетом\n`;
-                    errorDetails += `• Блокировка скриптов\n\n`;
-                    errorDetails += `Решение:\n`;
-                    errorDetails += `Откройте приложение через VK Mini Apps`;
-                } else {
-                    errorDetails += `Stack: ${error.stack || 'Нет'}`;
-                }
-
-                showError(errorDetails);
+                console.error(error);
+                showError('Ошибка: ' + error.message);
             }
         };
-
-        // Добавляем обработчик ошибок
-        window.onerror = function(message, source, lineno, colno, error) {
-            addDebug(`❌ Global error: ${message}`);
-            console.error('Global error:', error);
-        };
-
-        // Добавляем обработчик unhandled rejections
-        window.addEventListener('unhandledrejection', function(event) {
-            addDebug(`❌ Unhandled rejection: ${event.reason}`);
-            console.error('Unhandled rejection:', event);
-        });
-
-        // Добавляем дополнительную проверку каждую секунду
-        setInterval(() => {
-            if (typeof vkBridge !== 'undefined') {
-                addDebug('💡 VK Bridge доступен (периодическая проверка)');
-            } else {
-                addDebug('⚠️ VK Bridge всё ещё не доступен');
-            }
-        }, 2000);
     </script>
 </body>
 </html>
