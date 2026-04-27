@@ -19,7 +19,11 @@ dev: ## Запустить с автоперезагрузкой
 	@echo "🔥 Запуск с автоперезагрузкой..."
 	uvicorn api_main:app --reload --host 127.0.0.1 --port 8000
 
-tunnel: ## Запустить VK Tunnel
+tunnel: ## Запустить ngrok (рекомендуется)
+	@echo "🌐 Запуск ngrok..."
+	ngrok http 8000
+
+vk-tunnel: ## Запустить VK Tunnel (альтернатива)
 	@echo "🌐 Запуск VK Tunnel..."
 	vk-tunnel --app-id=54567668 --http-port=8000 --https-port=6001 --mode=local
 
