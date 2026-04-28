@@ -375,6 +375,30 @@
     }
 
     async function loadExercises() {
+        // Режим отладки: используем тестовые данные
+        const ua = navigator.userAgent;
+        const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+
+        if (!isVK) {
+            const container = document.getElementById('exercisesList');
+            const testExercises = [
+                { id: 1, name: 'Отжимания', calories: 50, points: 10 },
+                { id: 2, name: 'Приседания', calories: 80, points: 15 },
+                { id: 3, name: 'Подтягивания', calories: 60, points: 12 }
+            ];
+
+            container.innerHTML = testExercises.map(ex => `
+                <div class="exercise-item" data-exercise-id="${ex.id}">
+                    <span><strong>${escapeHtml(ex.name)}</strong><br><small>🔥 ${ex.calories} ккал</small></span>
+                    <button class="btn" style="width:auto; padding:8px 16px;">Выбрать</button>
+                </div>
+            `).join('');
+
+            console.log('🧪 Режим отладки: тестовые упражнения загружены');
+            return;
+        }
+
+        // Режим VK Mini App: запрашиваем из API
         const exercises = await apiCall('/api/exercises');
         const container = document.getElementById('exercisesList');
         if (!exercises || exercises.length === 0) {
@@ -390,6 +414,29 @@
     }
 
     async function loadLeaderboard() {
+        // Режим отладки: используем тестовые данные
+        const ua = navigator.userAgent;
+        const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+
+        if (!isVK) {
+            const container = document.getElementById('leaderboardList');
+            const testLeaders = [
+                { name: 'Иван', points: 5000 },
+                { name: 'Мария', points: 3500 },
+                { name: 'Алексей', points: 2000 }
+            ];
+
+            container.innerHTML = testLeaders.map((u, idx) => `
+                <div class="exercise-item">
+                    <span>${idx+1}. ${escapeHtml(u.name)} — ⭐ ${u.points}</span>
+                </div>
+            `).join('');
+
+            console.log('🧪 Режим отладки: тестовая таблица лидеров загружена');
+            return;
+        }
+
+        // Режим VK Mini App: запрашиваем из API
         const leaders = await apiCall('/api/leaderboard');
         const container = document.getElementById('leaderboardList');
         if (!leaders || leaders.length === 0) {
@@ -472,9 +519,16 @@
 
                 currentVKUser = testUser;
 
+                // Устанавливаем тестовые данные в DOM
                 document.getElementById('user_name').innerText = `${testUser.first_name} ${testUser.last_name}`;
                 document.getElementById('user_id').innerText = `${testUser.id} (отладка)`;
                 document.getElementById('avatar').src = testUser.photo_100;
+
+                // Устанавливаем тестовые баллы
+                document.getElementById('points').innerText = '1500';
+                document.getElementById('coins').innerText = '100';
+                document.getElementById('fuel').innerText = '50';
+                document.getElementById('workouts_count').innerText = '5';
 
                 // Показываем сообщение
                 const debugMsg = document.createElement('div');
@@ -483,11 +537,7 @@
                 debugMsg.innerHTML = '🧪 Режим отладки (тестовые данные)';
                 document.body.appendChild(debugMsg);
 
-                // Пропускаем VK API вызовы
-                await loadUserProfile(testUser.id);
-                await refreshHomeScreen();
-                await Promise.all([loadExercises(), loadLeaderboard()]);
-
+                // Пропускаем все API вызовы в режиме отладки
                 showScreen('home');
                 return;
             }
