@@ -312,8 +312,11 @@
             console.error(`API error ${endpoint}:`, e);
 
             // Режим отладки: возвращаем тестовые данные при ошибке API
-            const ua = navigator.userAgent;
-            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+            const hasVKBridge = typeof window.vkBridge !== 'undefined' || typeof window.vkConnect !== 'undefined';
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasVKParams = urlParams.has('vk_app_id') && urlParams.has('vk_user_id');
+            const isInIframe = window.parent !== window;
+            const isVK = hasVKBridge || hasVKParams || isInIframe;
 
             if (!isVK) {
                 console.warn('💡 Режим отладки: тестовые данные для', endpoint);
@@ -375,9 +378,12 @@
     }
 
     async function loadExercises() {
-        // Режим отладки: используем тестовые данные
-        const ua = navigator.userAgent;
-        const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+        // Проверяем VK окружение (такая же как в init())
+        const hasVKBridge = typeof window.vkBridge !== 'undefined' || typeof window.vkConnect !== 'undefined';
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasVKParams = urlParams.has('vk_app_id') && urlParams.has('vk_user_id');
+        const isInIframe = window.parent !== window;
+        const isVK = hasVKBridge || hasVKParams || isInIframe;
 
         if (!isVK) {
             const container = document.getElementById('exercisesList');
@@ -414,9 +420,12 @@
     }
 
     async function loadLeaderboard() {
-        // Режим отладки: используем тестовые данные
-        const ua = navigator.userAgent;
-        const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+        // Проверяем VK окружение (такая же как в init())
+        const hasVKBridge = typeof window.vkBridge !== 'undefined' || typeof window.vkConnect !== 'undefined';
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasVKParams = urlParams.has('vk_app_id') && urlParams.has('vk_user_id');
+        const isInIframe = window.parent !== window;
+        const isVK = hasVKBridge || hasVKParams || isInIframe;
 
         if (!isVK) {
             const container = document.getElementById('leaderboardList');
@@ -501,9 +510,23 @@
     // ---------- ИНИЦИАЛИЗАЦИЯ VK BRIDGE ----------
     async function init() {
         try {
-            // Проверяем окружение
-            const ua = navigator.userAgent;
-            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+            // Проверяем VK окружение (работает и на мобильном, и на десктопе)
+            const hasVKBridge = typeof window.vkBridge !== 'undefined' || typeof window.vkConnect !== 'undefined';
+
+            // Проверяем VK параметры в URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasVKParams = urlParams.has('vk_app_id') && urlParams.has('vk_user_id');
+
+            // Проверяем что загружен в iframe (для десктопной версии VK)
+            const isInIframe = window.parent !== window;
+
+            const isVK = hasVKBridge || hasVKParams || isInIframe;
+
+            console.log('🔍 Диагностика окружения:');
+            console.log(`  vkBridge: ${hasVKBridge}`);
+            console.log(`  VK параметры: ${hasVKParams}`);
+            console.log(`  В iframe: ${isInIframe}`);
+            console.log(`  Результат: ${isVK ? '✅ VK окружение' : '❌ Не VK окружение'}`);
 
             if (!isVK) {
                 console.warn('⚠️ Режим отладки: Не VK окружение');
