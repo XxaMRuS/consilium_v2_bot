@@ -3,27 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fitness Bot</title>
-
-    <!-- VK Bridge - STATIC FILE -->
-    <script src="/static/vk-bridge.min.js"></script>
-
-    <!-- VK Bridge Debug -->
-    <script>
-        console.log('=== VK BRIDGE DEBUG ===');
-        console.log('window.vkBridge:', window.vkBridge);
-        console.log('window.vkConnect:', window.vkConnect);
-        console.log('typeof vkBridge:', typeof window.vkBridge);
-        console.log('typeof vkConnect:', typeof window.vkConnect);
-        if (window.vkBridge) {
-            console.log('✅ VK Bridge доступен!');
-            console.log('Методы:', Object.keys(window.vkBridge));
-        } else {
-            console.log('❌ VK Bridge НЕ доступен!');
-        }
-        console.log('=== END DEBUG ===');
-    </script>
-
+    <title>Fitness Bot — VK Mini App</title>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -32,282 +13,546 @@
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: white;
+            color: #fff;
+            padding-bottom: 70px;
         }
 
         .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .screen {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .profile-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #4caf50;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
             text-align: center;
-            padding: 20px;
-            max-width: 400px;
         }
 
-        .logo {
-            font-size: 60px;
-            margin-bottom: 20px;
-        }
-
-        .title {
-            font-size: 28px;
+        .stat-value {
+            font-size: 22px;
             font-weight: bold;
+            color: #4caf50;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            padding: 14px 20px;
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
             margin-bottom: 10px;
         }
 
-        .subtitle {
-            font-size: 16px;
-            opacity: 0.9;
-            margin-bottom: 30px;
+        .btn-primary {
+            background: #4caf50;
+            color: white;
+            font-weight: bold;
         }
 
-        .status {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            min-height: 60px;
+        .btn:active {
+            transform: scale(0.97);
+            opacity: 0.8;
         }
 
-        .balances {
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
         }
 
-        .balance-item {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 10px 15px;
-            font-size: 14px;
-            font-weight: bold;
-            flex: 1;
-            max-width: 100px;
-        }
-
-        .debug {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 20px;
-            font-size: 11px;
-            font-family: monospace;
-            text-align: left;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .button {
-            background: white;
-            color: #667eea;
+        .nav-item {
+            background: none;
             border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
+            color: #aaa;
+            font-size: 12px;
+            text-align: center;
+            padding: 6px 0;
+            flex: 1;
             cursor: pointer;
-            margin: 10px;
+            transition: 0.2s;
+        }
+
+        .nav-item.active {
+            color: #4caf50;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            display: block;
+        }
+
+        .exercise-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loader {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.7;
+        }
+
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
         }
 
         .hidden {
             display: none;
         }
 
-        .error {
-            background: rgba(255, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
             font-size: 14px;
-            display: none;
+            z-index: 200;
+            animation: fadeOut 2s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        .last-workout {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-top: 8px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="loading">
-            <div class="logo">🏋️</div>
-            <div class="title">Fitness Bot</div>
-            <div class="subtitle">Загрузка...</div>
-            <div class="status" id="status">Инициализация...</div>
-            <div class="debug" id="debug"></div>
-        </div>
 
-        <div id="main" class="hidden">
-            <div class="logo">🏋️</div>
-            <div class="title">Fitness Bot</div>
-            <div class="subtitle">Твой персональный тренер</div>
-            <div class="status" id="userInfo"></div>
-            <div class="balances" id="userBalances"></div>
-            <button class="button" onclick="testVK()">🔄 Проверить VK</button>
-        </div>
-
-        <div id="error" class="hidden"></div>
+<div class="container" id="app">
+    <div id="screen-splash" class="screen active">
+        <div class="loader">🏋️ Загрузка профиля...</div>
     </div>
 
-    <script>
-        const debugDiv = document.getElementById('debug');
-        const statusDiv = document.getElementById('status');
+    <div id="screen-home" class="screen">
+        <div class="card">
+            <div class="profile-row">
+                <img id="avatar" class="avatar" src="" alt="avatar">
+                <div>
+                    <h3 id="user_name">Имя</h3>
+                    <p style="font-size:12px; opacity:0.7;">ID: <span id="user_id">—</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="card stats-grid">
+            <div><div class="stat-value" id="points">0</div><div class="stat-label">⭐ Очки</div></div>
+            <div><div class="stat-value" id="coins">0</div><div class="stat-label">🪙 Монеты</div></div>
+            <div><div class="stat-value" id="fuel">0</div><div class="stat-label">⚡ Fun Fuel</div></div>
+            <div><div class="stat-value" id="workouts_count">0</div><div class="stat-label">🏋️ Тренировок</div></div>
+        </div>
+        <div class="card" id="lastWorkoutCard" style="display:none;">
+            <div class="last-workout">📊 Последняя тренировка: <span id="lastWorkoutText">—</span></div>
+        </div>
+        <button class="btn btn-primary" id="startWorkoutBtn">🔥 Начать тренировку</button>
+    </div>
 
-        function log(msg) {
-            const time = new Date().toLocaleTimeString();
-            debugDiv.innerHTML += `[${time}] ${msg}<br>`;
-            console.log(msg);
-            debugDiv.scrollTop = debugDiv.scrollHeight;
-        }
+    <div id="screen-sport" class="screen">
+        <div class="card">
+            <h3>📋 Упражнения</h3>
+            <div id="exercisesList"><div class="loader">Загрузка упражнений...</div></div>
+        </div>
+    </div>
 
-        function showMain() {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('main').classList.remove('hidden');
-        }
+    <div id="screen-pvp" class="screen">
+        <div class="card">
+            <h3>⚔️ PvP баттлы</h3>
+            <p style="opacity:0.7;">Скоро здесь будут вызовы других игроков</p>
+        </div>
+    </div>
 
-        function showError(msg) {
-            log('❌ ' + msg);
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('main').classList.add('hidden');
-            const errorDiv = document.getElementById('error');
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = msg;
-        }
+    <div id="screen-ranking" class="screen">
+        <div class="card">
+            <h3>🏆 Таблица лидеров</h3>
+            <div id="leaderboardList"><div class="loader">Загрузка рейтинга...</div></div>
+        </div>
+    </div>
 
-        function testVK() {
-            log('🧪 Тест VK Bridge...');
-            if (typeof vkBridge !== 'undefined') {
-                log('✅ vkBridge доступен!');
-                log('Тип: ' + typeof vkBridge);
-                log('Методы: ' + Object.keys(vkBridge).join(', '));
-            } else {
-                log('❌ vkBridge НЕ доступен');
+    <div id="screen-more" class="screen">
+        <div class="card">
+            <h3>📁 Дополнительно</h3>
+            <button class="btn" id="mountainBtn">⛰️ Гора успеха</button>
+            <button class="btn" id="hallOfFameBtn">🏆 Зал славы</button>
+            <button class="btn" id="aiBtn">🤖 AI Тренер</button>
+            <button class="btn" id="calendarBtn">📅 Календарь</button>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <button class="nav-item" data-screen="home"><span class="nav-icon">🏠</span><span>Главная</span></button>
+    <button class="nav-item" data-screen="sport"><span class="nav-icon">🏋️</span><span>Спорт</span></button>
+    <button class="nav-item" data-screen="pvp"><span class="nav-icon">⚔️</span><span>PvP</span></button>
+    <button class="nav-item" data-screen="ranking"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
+    <button class="nav-item" data-screen="more"><span class="nav-icon">📁</span><span>Ещё</span></button>
+</div>
+
+<script>
+    // ---------- КОНФИГ ----------
+    const API_BASE = window.location.origin; // автоопределение домена бэкенда
+
+    // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
+    let currentVKUser = null;
+    let userStats = {};
+
+    // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const target = document.getElementById(`screen-${screenId}`);
+        if (target) target.classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            if (btn.dataset.screen === screenId) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    function showError(msg) {
+        const errDiv = document.createElement('div');
+        errDiv.className = 'error';
+        errDiv.innerText = msg;
+        document.getElementById('app')?.prepend(errDiv);
+        setTimeout(() => errDiv.remove(), 3000);
+    }
+
+    // ---------- API СЛОЙ (с CORS и обработкой ошибок) ----------
+    async function apiCall(endpoint, options = {}) {
+        try {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.error(`API error ${endpoint}:`, e);
+
+            // Режим отладки: возвращаем тестовые данные при ошибке API
+            const ua = navigator.userAgent;
+            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+
+            if (!isVK) {
+                console.warn('💡 Режим отладки: тестовые данные для', endpoint);
+
+                // Тестовые данные для разных endpoints
+                if (endpoint.includes('/users/')) {
+                    return {
+                        id: 123456789,
+                        first_name: 'Тестовый',
+                        username: 'test_user',
+                        level: 1,
+                        balances: { score: 1500, coins: 100, fun_fuel: 50 },
+                        registered_date: new Date().toISOString()
+                    };
+                } else if (endpoint.includes('/exercises')) {
+                    return {
+                        count: 3,
+                        exercises: [
+                            { id: 1, name: 'Отжимания', calories: 50, points: 10 },
+                            { id: 2, name: 'Приседания', calories: 80, points: 15 },
+                            { id: 3, name: 'Подтягивания', calories: 60, points: 12 }
+                        ]
+                    };
+                } else if (endpoint.includes('/leaderboard')) {
+                    return {
+                        count: 3,
+                        leaderboard: [
+                            { user_id: 1, first_name: 'Иван', total_score: 5000 },
+                            { user_id: 2, first_name: 'Мария', total_score: 3500 },
+                            { user_id: 3, first_name: 'Алексей', total_score: 2000 }
+                        ]
+                    };
+                }
+
+                // Пустой ответ для неизвестных endpoints
+                return {};
             }
+
+            throw e;
         }
+    }
 
-        // Простая инициализация
-        window.onload = async function() {
-            log('🚀 Старт приложения');
+    async function registerVKUser(vkUser) {
+        return await apiCall('/api/users/register', {
+            method: 'POST',
+            body: JSON.stringify({
+                vk_id: vkUser.id,
+                first_name: vkUser.first_name,
+                last_name: vkUser.last_name || '',
+                photo_url: vkUser.photo_100 || ''
+            })
+        });
+    }
 
+    async function loadUserProfile(vkId) {
+        const data = await apiCall(`/api/users/${vkId}`);
+        userStats = data;
+        return data;
+    }
+
+    async function loadExercises() {
+        const exercises = await apiCall('/api/exercises');
+        const container = document.getElementById('exercisesList');
+        if (!exercises || exercises.length === 0) {
+            container.innerHTML = '<p style="opacity:0.7;">Нет упражнений</p>';
+            return;
+        }
+        container.innerHTML = exercises.map(ex => `
+            <div class="exercise-item" data-exercise-id="${ex.id}">
+                <span><strong>${escapeHtml(ex.name)}</strong><br><small>🔥 ${ex.calories || 0} ккал</small></span>
+                <button class="btn" style="width:auto; padding:8px 16px;">Выбрать</button>
+            </div>
+        `).join('');
+    }
+
+    async function loadLeaderboard() {
+        const leaders = await apiCall('/api/leaderboard');
+        const container = document.getElementById('leaderboardList');
+        if (!leaders || leaders.length === 0) {
+            container.innerHTML = '<p style="opacity:0.7;">Нет данных</p>';
+            return;
+        }
+        container.innerHTML = leaders.map((u, idx) => `
+            <div class="exercise-item">
+                <span>${idx+1}. ${escapeHtml(u.name || 'Игрок')} — ⭐ ${u.points || 0}</span>
+            </div>
+        `).join('');
+    }
+
+    async function submitWorkout(exerciseId, resultValue) {
+        await apiCall('/api/workouts', {
+            method: 'POST',
+            body: JSON.stringify({
+                vk_id: currentVKUser.id,
+                exercise_id: parseInt(exerciseId),
+                result: parseInt(resultValue)
+            })
+        });
+        showToast('✅ Тренировка засчитана!');
+        await refreshHomeScreen();
+    }
+
+    async function startWorkoutWithExercise(exerciseId) {
+        const reps = prompt('Сколько подходов/повторений выполнили?', '1');
+        if (reps && !isNaN(parseInt(reps)) && parseInt(reps) > 0) {
             try {
-                // Проверяем окружение
-                const ua = navigator.userAgent;
-                log('📱 User Agent: ' + ua.substring(0, 50) + '...');
-
-                const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
-                log('VK App: ' + (isVK ? '✅ Да' : '❌ Нет'));
-
-                // Ждем VK Bridge до 10 секунд
-                log('⏳ Ожидание VK Bridge...');
-
-                let attempts = 0;
-                const maxAttempts = 100; // 10 секунд
-
-                while (typeof vkBridge === 'undefined' && attempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    attempts++;
-
-                    if (attempts % 10 === 0) {
-                        log(`⏳ Проверка ${attempts}/${maxAttempts}...`);
-                    }
-                }
-
-                if (typeof vkBridge === 'undefined') {
-                    throw new Error('VK Bridge не загружен за 10 секунд');
-                }
-
-                log('✅ VK Bridge загружен!');
-
-                // Инициализация
-                log('⏳ VKWebAppInit...');
-                await vkBridge.send('VKWebAppInit');
-                log('✅ VKWebAppInit OK');
-
-                // Получаем данные
-                log('⏳ VKWebAppGetUserInfo...');
-                const userData = await vkBridge.send('VKWebAppGetUserInfo');
-
-                if (!userData) {
-                    throw new Error('Нет данных пользователя');
-                }
-
-                log(`✅ Пользователь: ${userData.first_name} ${userData.last_name}`);
-                log(`📸 Аватар: ${userData.photo_100 || 'Нет'}`);
-
-                // Получаем баллы с API
-                log('⏳ Получение баллов с API...');
-                let apiData = null;
-                try {
-                    const response = await fetch(`/api/users/${userData.id}`);
-
-                    if (response.status === 404) {
-                        log('⚠️ Пользователь не найден, регистрируем...');
-                        // Автоматически регистрируем пользователя
-                        const registerResponse = await fetch('/api/users/register', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                vk_id: userData.id,
-                                first_name: userData.first_name,
-                                last_name: userData.last_name || ''
-                            })
-                        });
-
-                        if (registerResponse.ok) {
-                            log('✅ Пользователь зарегистрирован!');
-                            // Повторно запрашиваем данные
-                            const retryResponse = await fetch(`/api/users/${userData.id}`);
-                            if (retryResponse.ok) {
-                                apiData = await retryResponse.json();
-                                log(`✅ Баллы получены: ${apiData.balances.score} очков`);
-                            }
-                        } else {
-                            throw new Error('Registration failed');
-                        }
-                    } else if (!response.ok) {
-                        throw new Error(`API Error: ${response.status}`);
-                    } else {
-                        apiData = await response.json();
-                        log(`✅ Баллы получены: ${apiData.balances.score} очков`);
-                    }
-                } catch (error) {
-                    log(`⚠️ Ошибка API: ${error.message}`);
-                }
-
-                // Показываем результат
-                const avatarUrl = userData.photo_100 || 'https://via.placeholder.com/100';
-
-                document.getElementById('userInfo').innerHTML =
-                    `<img src="${avatarUrl}" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 3px solid white;"><br>` +
-                    `👤 ${userData.first_name} ${userData.last_name}<br>` +
-                    `<small>ID: ${userData.id}</small>`;
-
-                if (!apiData) {
-                    document.getElementById('userBalances').innerHTML =
-                        `<div style="background: rgba(255, 100, 0, 0.3); border-radius: 10px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
-                            ❌ Ошибка загрузки данных<br>
-                            <small>Попробуйте обновить страницу</small>
-                        </div>`;
-                } else {
-                    const balances = apiData.balances || { score: 0, coins: 0, fun_fuel: 0 };
-                    document.getElementById('userBalances').innerHTML =
-                        `<div class="balance-item">⭐ ${balances.score}</div>` +
-                        `<div class="balance-item">🪙 ${balances.coins}</div>` +
-                        `<div class="balance-item">⚡ ${balances.fun_fuel}</div>`;
-                }
-
-                log('🎉 УСПЕХ!');
-
-                setTimeout(showMain, 500);
-
-            } catch (error) {
-                console.error(error);
-                showError('Ошибка: ' + error.message);
+                await submitWorkout(exerciseId, parseInt(reps));
+                showScreen('home');
+            } catch (e) {
+                showError('❌ Ошибка записи тренировки');
             }
-        };
-    </script>
+        } else if (reps !== null) {
+            showError('Введите корректное число');
+        }
+    }
+
+    async function refreshHomeScreen() {
+        if (!currentVKUser) return;
+        const profile = await loadUserProfile(currentVKUser.id);
+        if (profile) {
+            document.getElementById('points').innerText = profile.points || 0;
+            document.getElementById('coins').innerText = profile.coins || 0;
+            document.getElementById('fuel').innerText = profile.fun_fuel || 0;
+            document.getElementById('workouts_count').innerText = profile.workouts_count || 0;
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // ---------- ИНИЦИАЛИЗАЦИЯ VK BRIDGE ----------
+    async function init() {
+        try {
+            // Проверяем окружение
+            const ua = navigator.userAgent;
+            const isVK = ua.includes('VKApp') || ua.includes('VK_Android') || ua.includes('VK_iOS');
+
+            if (!isVK) {
+                console.warn('⚠️ Режим отладки: Не VK окружение');
+                console.warn('💡 Используются тестовые данные');
+
+                // Тестовые данные для отладки
+                const testUser = {
+                    id: 123456789,
+                    first_name: 'Тестовый',
+                    last_name: 'Пользователь',
+                    photo_100: 'https://vk.com/images/camera_100.png'
+                };
+
+                currentVKUser = testUser;
+
+                document.getElementById('user_name').innerText = `${testUser.first_name} ${testUser.last_name}`;
+                document.getElementById('user_id').innerText = `${testUser.id} (отладка)`;
+                document.getElementById('avatar').src = testUser.photo_100;
+
+                // Показываем сообщение
+                const debugMsg = document.createElement('div');
+                debugMsg.className = 'toast';
+                debugMsg.style.background = 'rgba(255, 200, 0, 0.9)';
+                debugMsg.innerHTML = '🧪 Режим отладки (тестовые данные)';
+                document.body.appendChild(debugMsg);
+
+                // Пропускаем VK API вызовы
+                await loadUserProfile(testUser.id);
+                await refreshHomeScreen();
+                await Promise.all([loadExercises(), loadLeaderboard()]);
+
+                showScreen('home');
+                return;
+            }
+
+            // Режим VK Mini App
+            await vkBridge.send('VKWebAppInit');
+            const vkUser = await vkBridge.send('VKWebAppGetUserInfo');
+            currentVKUser = vkUser;
+
+            document.getElementById('user_name').innerText = `${vkUser.first_name} ${vkUser.last_name || ''}`;
+            document.getElementById('user_id').innerText = vkUser.id;
+            document.getElementById('avatar').src = vkUser.photo_100 || 'https://vk.com/images/camera_100.png';
+
+            await registerVKUser(vkUser);
+            await loadUserProfile(vkUser.id);
+            await refreshHomeScreen();
+
+            // Предзагрузка данных для других экранов
+            await Promise.all([loadExercises(), loadLeaderboard()]);
+
+            showScreen('home');
+        } catch (err) {
+            console.error(err);
+            showError('❌ Ошибка подключения к VK или серверу');
+            document.getElementById('screen-splash').innerHTML = '<div class="error">Не удалось загрузить приложение</div>';
+        }
+    }
+
+    // ---------- ДЕЛЕГИРОВАНИЕ СОБЫТИЙ (решает проблему утечек) ----------
+    document.getElementById('exercisesList')?.addEventListener('click', (e) => {
+        const exerciseDiv = e.target.closest('[data-exercise-id]');
+        if (exerciseDiv) {
+            const exId = exerciseDiv.dataset.exerciseId;
+            if (exId) startWorkoutWithExercise(exId);
+        }
+    });
+
+    // ---------- НАВИГАЦИЯ С ЛОАДЕРАМИ ----------
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const screen = btn.dataset.screen;
+            showScreen(screen);
+            if (screen === 'sport') {
+                document.getElementById('exercisesList').innerHTML = '<div class="loader">⏳ Загрузка...</div>';
+                await loadExercises();
+            }
+            if (screen === 'ranking') {
+                document.getElementById('leaderboardList').innerHTML = '<div class="loader">⏳ Загрузка...</div>';
+                await loadLeaderboard();
+            }
+        });
+    });
+
+    document.getElementById('startWorkoutBtn')?.addEventListener('click', () => {
+        showScreen('sport');
+    });
+
+    // Доп. кнопки в "Ещё"
+    document.getElementById('mountainBtn')?.addEventListener('click', () => showToast('⛰️ Гора успеха — в разработке'));
+    document.getElementById('hallOfFameBtn')?.addEventListener('click', () => showToast('🏆 Зал славы — в разработке'));
+    document.getElementById('aiBtn')?.addEventListener('click', () => showToast('🤖 AI тренер — скоро'));
+    document.getElementById('calendarBtn')?.addEventListener('click', () => showToast('📅 Календарь тренировок — скоро'));
+
+    // Запуск
+    init();
+</script>
 </body>
 </html>
