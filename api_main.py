@@ -94,28 +94,76 @@ class VKUserRegisterRequest(BaseModel):
 # ==================== HEALTH CHECK ====================
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
-    """VK Mini App главная страница"""
-    file_path = os.path.join(os.path.dirname(__file__), "index.html")
-    if os.path.exists(file_path):
+async def root(vk_app_id: Optional[str] = None, vk_user_id: Optional[str] = None):
+    """
+    VK Mini App главная страница
+
+    Принимает VK параметры но всегда отдаёт HTML
+    """
+    try:
+        file_path = os.path.join(os.path.dirname(__file__), "index.html")
+
+        if not os.path.exists(file_path):
+            logger.error("index.html not found!")
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Fitness Bot - Error</title>
+            </head>
+            <body style="background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif;">
+                <div>
+                    <h1>❌ Ошибка</h1>
+                    <p>index.html не найден</p>
+                </div>
+            </body>
+            </html>
+            """
+
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-            logger.info(f"Serving index.html, size: {len(content)} bytes")
-            return content
-    else:
-        logger.error("index.html not found!")
-        return """
+
+        # Логируем запрос
+        logger.info(f"Serving index.html ({len(content)} bytes) - VK App: {vk_app_id}, User: {vk_user_id}")
+
+        return content
+
+    except Exception as e:
+        logger.error(f"Error serving index.html: {e}")
+        return f"""
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Fitness Bot</title>
+            <title>Fitness Bot - Error</title>
         </head>
-        <body style="background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif;">
-            <div>Загрузка...</div>
+            <body style="background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif;">
+            <div>
+                <h1>❌ Ошибка загрузки</h1>
+                <p>{str(e)}</p>
+            </div>
         </body>
         </html>
         """
+
+@app.head("/")
+async def root_head(vk_app_id: Optional[str] = None, vk_user_id: Optional[str] = None):
+    """
+    HEAD запрос для VK Mini App
+
+    VK делает HEAD перед GET для проверки
+    """
+    from fastapi.responses import Response
+
+    file_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            logger.info(f"HEAD request for index.html ({len(content)} bytes) - VK App: {vk_app_id}, User: {vk_user_id}")
+            return Response(content=content, media_type="text/html")
+    else:
+        return Response(content="Not Found", status_code=404, media_type="text/html")
 
 @app.get("/health")
 async def health():
